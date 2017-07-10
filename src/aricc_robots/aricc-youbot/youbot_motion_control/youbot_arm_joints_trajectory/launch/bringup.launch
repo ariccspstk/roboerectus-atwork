@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<launch>
+  <node pkg="youbot_arm_joints_trajectory" type="youbot_arm_joints_trajectory_server" name="youbot_arm_joints_trajectory_server" output="screen">
+  <rosparam command="load" file="$(find youbot_arm_joints_trajectory)/config/joints_limit.yaml"/>
+  </node>
+</launch>
+

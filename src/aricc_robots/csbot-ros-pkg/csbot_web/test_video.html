@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>CSBOT</title>
+<meta charset="utf-8" />
+<script type="text/javascript" src="javascript/libs/eventemitter2.min.js"></script>
+<script type="text/javascript" src="javascript/libs/mjpegcanvas.min.js"></script>
+<script type="text/javascript" src="javascript/libs/roslib.min.js"></script>
+
+<script type="text/javascript" type="text/javascript">
+  /**
+   * Setup all visualization elements when the page is loaded. 
+   */
+  // Connecting to ROS
+  var ros_ = new ROSLIB.Ros({
+    url : 'ws://localhost:9090'
+  });
+  ros_.on('connection', function() {
+    console.log('Connected to websocket server.');
+  });
+  ros_.on('error', function(error) {
+    console.log('Error connecting to websocket server: ', error);
+  });
+  ros_.on('close', function() {
+    console.log('Connection to websocket server closed.');
+  });
+  function init() {
+    // Create the main viewer.
+    var viewer = new MJPEGCANVAS.Viewer({
+      divID : 'mjpeg',
+      host : 'localhost',
+      width : 320,
+      height : 240,
+      topic : '/camera1/image_raw'
+    });
+  }
+var sub_us_l_ = new ROSLIB.Topic({
+    ros : ros_,
+    name : 'left_us',
+    messageType : 'std_msgs/UInt16'
+  });
+  sub_us_l_.subscribe(function(message) {
+    console.log('Received message on ' + sub_us_l_.name + ': ' + message.data);
+    sub_us_l_.unsubscribe();
+  });
+
+</script>
+</head>
+
+<body onload="init()">
+  <h1>Simple MJPEG Canvas Example</h1>
+  <div id="mjpeg"></div>
+</body>
+</html>

@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<!--
+Demo launch file to run single passthrough filter in stand alone.
+-->
+<launch>
+  <arg name="nodelet_manager" default="aricc_laser_nodelet"/>
+  <arg name="input_laser" default="/base_scan_front"/>
+  <node pkg="nodelet" type="nodelet" name="$(arg nodelet_manager)" args="manager" output="screen"/>
+  
+   <node pkg="nodelet" type="nodelet" name="GetBeamDist"
+        args="load aricc_laser_pipeline/GetBeamDist $(arg nodelet_manager)">
+    <remap from="~input" to="$(arg input_laser)" />
+    <rosparam>
+      angles: [ '-89', '0', '89' ]
+    </rosparam>
+  </node>
+
+
+</launch>

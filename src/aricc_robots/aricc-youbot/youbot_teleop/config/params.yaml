@@ -1,0 +1,31 @@
+arm_name_list: [ 'arm_joints_look_table',
+                 #'arm_joints_ready_cut',
+                 #'arm_joints_cut', 
+                 #'arm_joints_ready_tray_left',
+                 #'arm_joints_tray_left',
+                 #'arm_joints_ready_tray_left', 
+                 #'arm_joints_ready_tray_center', 
+                 #'arm_joints_before_tray_center', 
+                 #'arm_joints_tray_center', 
+                 #'arm_joints_before_tray_center', 
+                 #'arm_joints_ready_tray_center', 
+                 #'arm_joints_ready_tray_right',
+                 #'arm_joints_tray_right',
+                 #'arm_joints_ready_tray_right',
+                 #'arm_joints_standby', 
+                 #'arm_joints_unload_table', 
+                 'arm_joints_transport'
+                 #'arm_joints_plaque', 
+                 #'arm_joints_pass_plaque', 
+                 #'arm_joints_transport_p', 
+                ]
+gripper_name_list: [ 
+  'gripper_open', 
+  #'gripper_close_light', 
+  'gripper_close_heavy' 
+]
+#for the arena on the right
+init_pose: ['-1.3734', '-1.397', '0.00', '0.00', '0.00', '0.52975', '0.9986']
+
+#for the arena on the left
+#init_pose: ['-1.591', '-0.593', '0.00', '0.00', '0.00', '0.658', '0.753']

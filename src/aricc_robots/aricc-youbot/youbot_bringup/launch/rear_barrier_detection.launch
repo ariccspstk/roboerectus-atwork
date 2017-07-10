@@ -1,0 +1,124 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="nodelet_manager" default="aricc_nodelet_manager"/>
+  <arg name="rgb_image" default="/usb_cam/image_raw"/>
+  <arg name="rgb_camera_info" default="/usb_cam/camera_info"/>
+  <arg name="group_name" default="youbot_barrier_rear_detection"/>
+  
+<group ns="$(arg group_name)">
+  <node pkg="nodelet" type="nodelet" name="$(arg nodelet_manager)" args="manager" output="screen"/>
+
+
+  <node pkg="nodelet" type="nodelet" name="RectToMaskImage"
+        args="load aricc_2d_vision/RectToMaskImage $(arg nodelet_manager)">
+    <remap from="~input/camera_info" to="$(arg rgb_camera_info)" />
+    <rosparam>
+      left_top_x: 0
+      left_top_y: 170
+      width: 640
+      height: 480
+    </rosparam>
+  </node>
+
+  <node pkg="nodelet" type="nodelet" name="ApplyMaskImage"
+        args="load aricc_2d_vision/ApplyMaskImage $(arg nodelet_manager)">
+    <remap from="~input" to="$(arg rgb_image)" />
+    <!--remap from="~input/mask" to="/RectToMaskImage/output" /-->
+    <remap from="~input/mask" to="/$(arg group_name)/RectToMaskImage/output" />
+    <rosparam>
+      approximate_sync: true
+    </rosparam>
+  </node>
+
+   <node pkg="nodelet" type="nodelet" name="SmoothingImage"
+        args="load aricc_2d_vision/SmoothingImage $(arg nodelet_manager)">
+    <remap from="~input" to="/$(arg group_name)/ApplyMaskImage/output" />
+    <rosparam>
+      method: 1
+      kernel_size: 2
+    </rosparam>
+  </node>
+
+
+   <node pkg="nodelet" type="nodelet" name="YellowFinder"
+        args="load aricc_2d_vision/ColourFinder $(arg nodelet_manager)">
+     <remap from="~input" to="/$(arg group_name)/SmoothingImage/output" />
+    <rosparam>
+      h_high: 90
+      h_low: 20
+      s_high: 255
+      s_low: 50
+      v_high: 255
+      v_low: 90
+    </rosparam>
+  </node>
+
+   <node pkg="nodelet" type="nodelet" name="UnapplyMaskImage"
+        args="load aricc_2d_vision/UnapplyMaskImage $(arg nodelet_manager)">
+    <remap from="~input" to="/$(arg group_name)/YellowFinder/output" />
+    <remap from="~input/mask" to="/$(arg group_name)/RectToMaskImage/output" />
+    <rosparam>
+      approximate_sync: true
+    </rosparam>
+  </node>
+
+  <node pkg="nodelet" type="nodelet" name="EdgeFinder"
+        args="load aricc_2d_vision/EdgeFinder $(arg nodelet_manager)">
+    <remap from="~input" to="/$(arg group_name)/UnapplyMaskImage/output" />
+    <rosparam>
+      kernel_size: 3
+    </rosparam>
+  </node>
+
+  <node pkg="nodelet" type="nodelet" name="DilateImage"
+        args="load aricc_2d_vision/DilateImage $(arg nodelet_manager)">
+    <remap from="~input" to="/$(arg group_name)/EdgeFinder/output" />
+    <rosparam>
+
+    </rosparam>
+  </node>
+
+  <node pkg="nodelet" type="nodelet" name="ContourFinder"
+        args="load aricc_2d_vision/ContourFinder $(arg nodelet_manager)">
+    <remap from="~input" to="/$(arg group_name)/DilateImage/output" />
+    <rosparam>
+      noise_size: 100
+      min_size: 500
+      min_dist: 60
+      epsilon: 3
+      close: false
+      debug: true
+    </rosparam>
+  </node>
+
+  <node pkg="nodelet" type="nodelet" name="RotatedRectFinder"
+        args="load aricc_2d_vision/RotatedRectFinder $(arg nodelet_manager)">
+    <!--remap from="~input/contour" to="/$(arg group_name)/ContourFinder/output/convex" /-->
+    <remap from="~input/contour" to="/$(arg group_name)/ContourFinder/output/contours" />
+    <remap from="~input/rgb_image" to="$(arg rgb_image)" />
+    <remap from="~input/threshold_image" to="/$(arg group_name)/UnapplyMaskImage/output" />
+    <remap from="~input/image_info" to="$(arg rgb_camera_info)" />
+    <rosparam>
+      approximate_sync: true
+      debug: true
+      detect_color: true
+      detect_density: true
+      z: 0.41
+    </rosparam>
+  </node>
+
+  <node pkg="nodelet" type="nodelet" name="PublishPointCloud"
+        args="load aricc_2d_vision/RectToPointCloud $(arg nodelet_manager)">
+    <remap from="~input" to="/$(arg group_name)/RotatedRectFinder/output/projected_rects" />
+    <rosparam>
+     frame: rear_barrier_link 
+    </rosparam>
+  </node>
+
+</group>
+
+  <!--node pkg="rqt_gui" type="rqt_gui" name="rqt_gui" /-->
+ <node pkg="tf" type="static_transform_publisher" name="barrier_rear_link" args="-0.42 -0.05 0 3.14 0 0 /base_footprint /rear_barrier_link 100"/> 
+</launch>
+
+

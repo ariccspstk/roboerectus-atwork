@@ -1,0 +1,7 @@
+#goal
+float64 timeout #in second
+trajectory_msgs/JointTrajectoryPoint[] points
+---
+#result
+---
+#feedback

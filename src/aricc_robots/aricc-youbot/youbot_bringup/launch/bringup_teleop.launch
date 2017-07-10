@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<launch>
+
+  <!-- ##################Device Drivers############### -->
+  
+  <!--Bring up youbot driver for motion control-->
+  <include file="$(find youbot_driver_ros_interface)/launch/youbot_driver.launch"/>
+  
+  <!--Bring up youbot gripper-->
+  <include file="$(find youbot_gripper)/launch/bringup.launch"/>
+  
+  <!--Bring up youbot joint state for TF-->
+  <include file="$(find youbot_driver_ros_interface)/launch/youbot_joint_state_publisher.launch"/>
+  
+  <!-- joystick tele operation-->
+  <include file="$(find youbot_teleop)/launch/bringup.launch"/>
+  
+  <!-- twist mixer to select control source-->
+  <include file="$(find youbot_bringup)/launch/twist_mixer.launch"/>
+  
+  <!-- marker detection nodelet -->
+  <!--include file="$(find youbot_bringup)/launch/marker_detection.launch"/-->
+  <!-- ############## actionlib & server ############# -->
+  
+  <include file="$(find youbot_arm_joints)/launch/bringup.launch"/>
+  <!--node pkg="rqt_gui" type="rqt_gui" name="rqt_gui" /-->
+</launch>

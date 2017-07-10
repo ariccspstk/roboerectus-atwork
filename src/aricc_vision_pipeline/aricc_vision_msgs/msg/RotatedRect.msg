@@ -1,0 +1,9 @@
+geometry_msgs/Point center
+float64 width
+float64 height
+float64 angle
+float64 density
+float64 color_h
+float64 color_s
+float64 color_v
+geometry_msgs/Point[] points

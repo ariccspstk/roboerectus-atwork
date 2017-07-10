@@ -1,0 +1,7 @@
+#goal
+float64 timeout #in second
+geometry_msgs/Pose destination
+---
+#result
+---
+#feedback

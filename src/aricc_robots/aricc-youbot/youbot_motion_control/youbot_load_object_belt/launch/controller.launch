@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<launch>
+  <node pkg="youbot_load_object" type="youbot_load_object_controller" name="youbot_load_object_controller" output="screen">
+    <param name="tray_1" type="string" value="empty"/>
+    <param name="tray_2" type="string" value="empty"/>
+    <param name="tray_3" type="string" value="empty"/>
+    <param name="item_1" type="string" value="S40_40_B"/>
+    <param name="item_2" type="string" value="M20"/>
+    <param name="item_3" type="string" value="S40_40_G"/>
+  </node>
+
+  <node pkg="rqt_gui" type="rqt_gui" name="rqt_gui" />
+
+</launch>
+

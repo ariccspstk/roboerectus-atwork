@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<launch>
+   <!--Bring up leap motion ros driver-->
+  <include file="$(find leap_motion_ros)/launch/leap_camera.launch"/>
+
+  <node pkg="robot_interaction_box" type="robot_interaction_box" name="robot_interaction_box" output="screen">
+  </node>
+</launch>

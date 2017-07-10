@@ -1,0 +1,119 @@
+<library path="lib/libaricc_2d_vision">
+
+  <class name="aricc_2d_vision/ApplyMaskImage" 
+         type="aricc_2d_vision::ApplyMaskImage" 
+         base_class_type="nodelet::Nodelet">
+  <description>
+    apply mask image
+  </description>
+  </class>
+  
+  <class name="aricc_2d_vision/MaskImageOperator" type="aricc_2d_vision::MaskImageOperator" base_class_type="nodelet::Nodelet">
+  <description>
+    mask image operation, including add, bitwise_add, bitwise_or, bitwise_xor
+  </description>
+  </class>
+  
+  <class name="aricc_2d_vision/UnapplyMaskImage" type="aricc_2d_vision::UnapplyMaskImage" base_class_type="nodelet::Nodelet">
+  <description>
+    unapply mask image
+  </description>
+  </class>
+   
+  <class name="aricc_2d_vision/DilateImage" type="aricc_2d_vision::DilateImage" base_class_type="nodelet::Nodelet">
+  <description>
+    dilate image
+  </description>
+  </class>
+  
+  <class name="aricc_2d_vision/ErodeImage" type="aricc_2d_vision::ErodeImage" base_class_type="nodelet::Nodelet">
+  <description>
+    erode image
+  </description>
+  </class>
+  
+  <class name="aricc_2d_vision/RectToMaskImage" type="aricc_2d_vision::RectToMaskImage" base_class_type="nodelet::Nodelet">
+  <description>
+    create mask image from rect info and camera info
+  </description>
+  </class>
+  
+  <class name="aricc_2d_vision/RectToPointCloud" type="aricc_2d_vision::RectToPointCloud" base_class_type="nodelet::Nodelet">
+  <description>
+    publish rect info as point cloud
+  </description>
+  </class>
+  
+  <class name="aricc_2d_vision/ContourFinder" type="aricc_2d_vision::ContourFinder" base_class_type="nodelet::Nodelet">
+  <description>
+    contour finder
+  </description>
+  </class>
+  
+  <class name="aricc_2d_vision/ColourFinder" type="aricc_2d_vision::ColourFinder" base_class_type="nodelet::Nodelet">
+  <description>
+    colour finder
+  </description>
+  </class>
+  
+  <class name="aricc_2d_vision/EdgeFinder" type="aricc_2d_vision::EdgeFinder" base_class_type="nodelet::Nodelet">
+  <description>
+    edge finder
+  </description>
+  </class>
+
+  <class name="aricc_2d_vision/CreateThresholdImage" type="aricc_2d_vision::CreateThresholdImage" base_class_type="nodelet::Nodelet">
+  <description>
+    create threshold image from gray image
+  </description>
+  </class>
+
+  <class name="aricc_2d_vision/SmoothingImage" type="aricc_2d_vision::SmoothingImage" base_class_type="nodelet::Nodelet">
+  <description>
+    smoothing image
+  </description>
+  </class>
+  
+  <class name="aricc_2d_vision/ProjectRotatedRect" type="aricc_2d_vision::ProjectRotatedRect" base_class_type="nodelet::Nodelet">
+  <description>
+    Convert rotated rect to 3D ray
+  </description>
+  </class>
+  
+  <class name="aricc_2d_vision/RotatedRectFinder" type="aricc_2d_vision::RotatedRectFinder" base_class_type="nodelet::Nodelet">
+  <description>
+    Find rotated rect in 2d and 3d space
+  </description>
+  </class>
+
+  <class name="aricc_2d_vision/RectBasedObjectDetection" type="aricc_2d_vision::RectBasedObjectDetection" base_class_type="nodelet::Nodelet">
+  <description>
+    Object detection based rotated rect info
+  </description>
+  </class>
+
+  <class name="aricc_2d_vision/CheckBoardDetector" type="aricc_2d_vision::CheckBoardDetector" base_class_type="nodelet::Nodelet">
+  <description>
+    Detect check boards based on 2D camera, including chessboard and QRcode
+  </description>
+  </class>
+  
+  <class name="aricc_2d_vision/ObjectDetector" type="aricc_2d_vision::ObjectDetector" base_class_type="nodelet::Nodelet">
+  <description>
+    Asad object detector
+  </description>
+  </class>
+
+
+  <class name="aricc_2d_vision/ShapeMatch" type="aricc_2d_vision::ShapeMatch" base_class_type="nodelet::Nodelet">
+  <description>
+    Shape matching
+  </description>
+  </class>
+
+  <class name="aricc_2d_vision/RTTImage" type="aricc_2d_vision::RTTImage" base_class_type="nodelet::Nodelet">
+  <description>
+  </description>
+  </class>
+
+</library>

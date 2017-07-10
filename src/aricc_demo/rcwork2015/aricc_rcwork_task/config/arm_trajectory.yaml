@@ -1,0 +1,71 @@
+trajectory_list: 
+ - [ 'arm_trajectory_look_table' ]
+ - [ 'arm_trajectory_look_rotating_table' ]
+ - [ 'arm_trajectory_standby' ]
+ - [ 'arm_trajectory_go_tray_1' ]
+ - [ 'arm_trajectory_go_tray_2' ]
+ - [ 'arm_trajectory_go_tray_3' ]
+ - [ 'arm_trajectory_go_tray_4' ]
+ - [ 'arm_trajectory_leave_tray_1' ]
+ - [ 'arm_trajectory_leave_tray_2' ]
+ - [ 'arm_trajectory_leave_tray_3' ]
+ - [ 'arm_trajectory_leave_tray_4' ]
+
+
+arm_trajectory_look_table: 
+  - { joints: [ '2.15', '1.04', '-1.39', '3.40', '2.95' ], duration: '3.0' }
+
+arm_trajectory_look_rotating_table: 
+  - { joints: [ '2.15', '1.27', '-1.39', '3.31', '2.95' ], duration: '3.0' }
+
+#arm_trajectory_look_table: 
+#  - { joints: [ '2.15', '1.35', '-1.07', '0.06', '2.95' ], duration: '3.0' }
+
+#arm_trajectory_standby: 
+#  - { joints: [ '2.15', '1.18', '-1.14', '3.31', '2.93' ], duration: '3.0' }
+
+arm_trajectory_standby: 
+  - { joints: [ '2.15', '1.04', '-1.39', '2.90', '2.95' ], duration: '3.0' }
+
+arm_trajectory_go_tray_1: 
+#  - { joints: [ '2.15', '1.18', '-3.94', '0.44', '2.93' ], duration: '5.0' }
+  - { joints: [ '2.74', '0.53', '-3.04', '0.02', '3.45' ], duration: '3.0' }
+  - { joints: [ '2.74', '0.38', '-3.04', '0.02', '3.45' ], duration: '3.0' }
+#  - { joints: [ '2.73', '0.53', '-3.08', '0.02', '3.43' ], duration: '3.0' }
+#  - { joints: [ '2.76', '0.28', '-3.07', '0.10', '3.37' ], duration: '3.0' }
+
+arm_trajectory_leave_tray_1: 
+  - { joints: [ '2.73', '0.53', '-3.08', '0.02', '3.43' ], duration: '3.0' }
+#  - { joints: [ '2.15', '1.18', '-3.94', '0.44', '2.93' ], duration: '5.0' }
+#  - { joints: [ '2.15', '1.18', '-1.14', '3.31', '2.93' ], duration: '5.0' }
+
+arm_trajectory_go_tray_2: 
+#  - { joints: [ '2.15', '1.18', '-3.94', '0.44', '2.93' ], duration: '5.0' }
+  - { joints: [ '2.35', '0.61', '-3.20', '0.01', '3.18' ], duration: '3.0' }
+  - { joints: [ '2.35', '0.35', '-3.18', '0.07', '3.07' ], duration: '3.0' }
+
+arm_trajectory_leave_tray_2: 
+  - { joints: [ '2.35', '0.61', '-3.20', '0.01', '3.18' ], duration: '3.0' }
+#  - { joints: [ '2.15', '1.18', '-3.94', '0.44', '2.93' ], duration: '3.0' }
+#  - { joints: [ '2.15', '1.18', '-1.14', '3.31', '2.93' ], duration: '5.0' }
+
+arm_trajectory_go_tray_3: 
+#  - { joints: [ '2.15', '1.18', '-3.94', '0.44', '2.93' ], duration: '5.0' }
+  - { joints: [ '1.97', '0.61', '-3.20', '0.02', '2.72' ], duration: '3.0' }
+  - { joints: [ '1.96', '0.36', '-3.21', '0.10', '2.72' ], duration: '3.0' }
+
+arm_trajectory_leave_tray_3: 
+  - { joints: [ '1.97', '0.61', '-3.20', '0.02', '2.72' ], duration: '3.0' }
+#  - { joints: [ '2.15', '1.18', '-3.94', '0.44', '2.93' ], duration: '3.0' }
+#  - { joints: [ '2.15', '1.18', '-1.14', '3.31', '2.93' ], duration: '5.0' }
+
+arm_trajectory_go_tray_4: 
+  - { joints: [ '2.15', '1.18', '-3.94', '0.44', '2.93' ], duration: '5.0' }
+  - { joints: [ '1.61', '0.47', '-3.14', '0.08', '2.52' ], duration: '3.0' }
+  - { joints: [ '1.61', '0.14', '-3.09', '0.22', '2.52' ], duration: '3.0' }
+
+arm_trajectory_leave_tray_4: 
+  - { joints: [ '1.61', '0.47', '-3.14', '0.08', '2.52' ], duration: '3.0' }
+  - { joints: [ '2.15', '1.18', '-3.94', '0.44', '2.93' ], duration: '3.0' }
+  - { joints: [ '2.15', '1.18', '-1.14', '3.31', '2.93' ], duration: '5.0' }
+

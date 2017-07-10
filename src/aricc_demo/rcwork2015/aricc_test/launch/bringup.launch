@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+  <rosparam command="load" file="$(find aricc_rcwork_task)/config/location.yaml"/>
+  <node name="aricc_test" pkg="aricc_test" type="aricc_test" output="screen">
+    <param name="rate" type="int"    value="5"/>
+    <param name="test_refbox" type="bool" value="false"/>
+  </node>
+  
+  <node pkg="atwork_refbox_ros_client" type="robot_example_ros"
+          name="robot_example_ros" output="screen">
+
+        <param name="remote_refbox" type="bool" value="true"/>
+        <!--param name="host_name" type="string" value="192.168.3.255"/-->
+        <param name="host_name" type="string" value="192.168.1.255"/>
+
+        <!-- refree box port when it is running on remote machine as client -->
+        <param name="public_port" type="int" value="4444"/>
+
+        <!-- refree box ports when it is running on same machine as client -->
+        <param name="refbox_send_port" type="int" value="4444"/>
+        <param name="refbox_recv_port" type="int" value="4445"/>
+
+        <!-- client/team port when refbox is running on remote machine -->
+        <param name="team_port" type="int" value="4466"/>
+
+        <!-- client/team port when refbox is running on same machine -->
+        <param name="team_recv_port" type="int" value="4466"/>
+        <param name="team_send_port" type="int" value="4467"/>
+
+        <!-- robot name -->
+        <param name="robot_name" type="string" value="Robo-Erectus"/>
+
+        <!-- team name specified in refbox configuration -->
+        <param name="team_name" type="string" value="Robo-Erectus"/>
+    </node>
+
+</launch>
+  

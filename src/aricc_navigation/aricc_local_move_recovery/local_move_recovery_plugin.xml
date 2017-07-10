@@ -1,0 +1,7 @@
+<library path="lib/liblocal_move_recovery">
+  <class name="local_move_recovery/LocalMoveRecovery" type="local_move_recovery::LocalMoveRecovery" base_class_type="nav_core::RecoveryBehavior">
+    <description>
+      A recovery behavior that performs a 360 degree in-place rotation to attempt to clear out space.
+    </description>
+  </class>
+</library>

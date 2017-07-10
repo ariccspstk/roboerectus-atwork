@@ -1,0 +1,161 @@
+#ifndef RCWORK_TASK_H_
+#define RCWORK_TASK_H_
+
+#include <geometry_msgs/Pose.h>
+#include <aricc_utils/geometry_utils.h>
+
+enum TaskEnum  { kRobotMoveToTable = 20, 
+                 kRobotAlignToTable, 
+                 kRobotLoadObjectsFromTable,
+                 kRobotLoadObjectsFromBelt,
+                 kRobotUnloadObjectsToTable, 
+                 kRobotUnloadObjectsToHole, 
+                 kRobotMoveAway, 
+                 kPause,
+                 kCancel,
+                 kEmpty };
+
+enum ActionEnum{ PICKUP_TABLE = 10, PICKUP_BELT, PLACE_TABLE, PLACE_HOLE, EXIT };
+enum StateEnum { ACTIVE = 0, SUCCEEDED, ABORTED };
+
+#define DIR_NORTH 0.0 
+
+class RCworkTask{
+public:
+  geometry_msgs::Pose location_;
+  double height_;
+  double align_dist_;
+  std::string container_;
+  std::vector<std::string> objects_;
+
+  ActionEnum action_;
+  unsigned int pause_;
+  TaskEnum now_;
+  TaskEnum last_;
+
+  ros::NodeHandle nh_;
+
+  RCworkTask(ros::NodeHandle nh): now_(kRobotMoveToTable), last_(kEmpty),
+    pause_(0), align_dist_(0){
+    objects_.clear();
+    nh_ = nh;
+  }
+  ~RCworkTask(){}
+
+  std::string toString() const{
+    switch(now_){
+      case kRobotMoveToTable:          return "kRobotMoveToTable";
+      case kRobotAlignToTable:         return "kRobotAlignToTable";
+      case kRobotLoadObjectsFromTable: return "kRobotLoadObjectsFromTable";
+      case kRobotLoadObjectsFromBelt:  return "kRobotLoadObjectsFromBelt";
+      case kRobotUnloadObjectsToTable: return "kRobotUnloadObjectsToTable";
+      case kRobotUnloadObjectsToHole:  return "kRobotUnLoadObjectsToHole";
+      case kPause:                     return "kPause";
+      case kCancel:                    return "kCancel";
+      case kRobotMoveAway:             return "kRobotMoveAway";
+
+      default:
+        ROS_ERROR("BUG: Unhandled State: %u", now_);
+        break;
+    }
+    return "BUG-UNKNOWN";
+  }
+
+  bool getNavigationTask(atwork_ros_msgs::NavigationTask task){
+    if( !getLocation( task.description, task. ) ) return false;
+  }
+
+  bool getTransportationTask(atwork_ros_msgs::TransportationTask task){
+  }
+
+  bool getLocation( std::string place, std::string dir = "NULL" ){
+    XmlRpc::XmlRpcValue list;
+    if(!nh_.getParam("locations", list)){
+      ROS_ERROR("locations does not exist!");
+      return false;
+    }
+    ROS_INFO("Found location list, size:%d",list.size());
+    ROS_ASSERT( list.getType() == XmlRpc::XmlRpcValue::TypeArray );
+
+    if( list.getType() == XmlRpc::XmlRpcValue::TypeArray ){
+      for(size_t i = 0; i < list.size(); ++i){
+        if( std::string( list[i]["place"] ) == place ){
+          location_.position.x =
+          atof(std::string(list[i]["x"]).c_str());
+          location_.position.y =
+          atof(std::string(list[i]["y"]).c_str());
+          location_.position.z =
+          atof(std::string(list[i]["z"]).c_str());
+          align_dist_ = atof(std::string(list[i]["align"]).c_str());
+          height_ = atof(std::string(list[i]["height"]).c_str());
+          if(dir == "UNKNOWN"){
+            getDirection(std::string(list[i]["dir"]));
+          }
+          else 
+            getDirection(dir);
+          return true;
+        }
+      }
+      ROS_ERROR("%s is not in location list",place.c_str());
+    }
+  }
+
+  bool getAction( std::string src ){
+    if( src == "PLACE_TABLE")       { action_ = PLACE_TABLE;  return true; }
+    else if( src == "PLACE_HOLE")   { action_ = PLACE_HOLE;   return true; }
+    else if( src == "PICKUP_TABLE") { action_ = PICKUP_TABLE; return true; }
+    else if( src == "PICKUP_BELT")  { action_ = PICKUP_BELT;  return true; }
+    else if( src == "EXIT")         { action_ = EXIT;         return true; }
+    else {
+      ROS_ERROR("Get action error!");
+      return false;
+    }
+  }
+
+  bool getDirection( std::string src ){
+    double th = 0.0;
+    if( src == "N")      th = 0.0 * M_PI + DIR_NORTH; 
+    else if( src == "W") th = 0.5 * M_PI + DIR_NORTH; 
+    else if( src == "S") th = 1.0 * M_PI + DIR_NORTH; 
+    else if( src == "E") th = 1.5 * M_PI + DIR_NORTH;
+    else {
+      th = 0.0;
+      ROS_ERROR("Goal direction is unknown, set as default 0");
+    }
+    aricc_utils::euler2Quat( 0.0, 0.0, th, location_.orientation );
+    return true;
+  }
+  
+  bool getObjects(XmlRpc::XmlRpcValue list){
+    ROS_INFO("Found objects list, size:%d",list.size());
+    ROS_ASSERT(list.getType() == XmlRpc::XmlRpcValue::TypeArray);
+    objects_.clear();
+
+    for(size_t i = 0; i < list.size(); ++i){
+      ROS_ASSERT(list[i].getType() == XmlRpc::XmlRpcValue::TypeString);
+      std::string object = static_cast<std::string>(list[i]);
+      if(object == "V20") object = "R20";
+      objects_.push_back(object);
+    }
+
+    if( objects_.size() > 3){
+      ROS_ERROR("objects number should be less than 3, but it is %lu", 
+        objects_.size());
+      ROS_ERROR("resized object size to 3");
+      objects_.resize(3);
+    }
+    return true;
+  }
+
+  bool getPauseTime( std::string pause ){
+    pause_ = atoi(pause.c_str());
+    if(isnan(pause_) || isinf(pause_)){ 
+      ROS_ERROR("pause is NAN or INF, set default as 0");
+    }
+    return true;
+  }
+
+private:
+};
+
+#endif

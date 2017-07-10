@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<!--
+Demo launch file to run single softkinetic camera in stand alone (no other /tf) setup with Rviz
+The arguments given are the device indices of the cameras determined by the DepthSense deamon.
+-->
+<launch>
+
+  <include file="$(find softkinetic_camera)/launch/softkinetic_camera_ds325.launch" />
+  <node name="aricc_3d_vision" pkg="aricc_3d_vision" type="test_border_estimator" args="0" output="screen" >
+    <param name="border_estimator/model_type"        type="string"    value="planar" />
+    <param name="border_estimator/point_cloud_topic" type="string"    value="/softkinetic_camera/depth/points" />
+    <param name="border_estimator/camera_info_topic" type="string"    value="/softkinetic_camera/depth/camera_info" />
+  </node>
+
+</launch>

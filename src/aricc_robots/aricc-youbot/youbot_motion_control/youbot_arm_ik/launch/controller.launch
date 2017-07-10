@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+  <node pkg="youbot_arm_ik" type="youbot_arm_ik_controller" name="youbot_arm_ik_controller" output="screen">
+  </node>
+
+  <node pkg="rqt_gui" type="rqt_gui" name="rqt_gui" />
+
+</launch>
+

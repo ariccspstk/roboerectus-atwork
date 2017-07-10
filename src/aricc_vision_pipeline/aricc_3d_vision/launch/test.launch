@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<!--
+Demo launch file to run single softkinetic camera in stand alone (no other /tf) setup with Rviz
+The arguments given are the device indices of the cameras determined by the DepthSense deamon.
+-->
+<launch>
+  <include file="$(find softkinetic_camera)/launch/softkinetic_camera_ds325.launch" />
+  <include file="$(find aricc_3d_vision)/launch/pass_through_filter.launch" />
+
+</launch>

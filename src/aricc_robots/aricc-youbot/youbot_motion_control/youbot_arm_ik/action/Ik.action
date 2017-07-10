@@ -1,0 +1,17 @@
+#goal
+float64 timeout #in second
+string name
+uint16 id
+float64 pitch
+float64 duration
+geometry_msgs/Point position
+geometry_msgs/Vector3 orientation
+bool arm_to_front
+bool arm_bended_up
+bool gripper_downwards
+bool move_arm
+---
+#result
+float64[] solution #in rad
+---
+#feedback

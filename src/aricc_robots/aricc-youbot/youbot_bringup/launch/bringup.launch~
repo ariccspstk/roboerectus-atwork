@@ -1,0 +1,60 @@
+<?xml version="1.0"?>
+<launch>
+
+  <!-- ##################Device Drivers############### -->
+  
+  <!--Bring up youbot driver for motion control-->
+  <include file="$(find youbot_driver_ros_interface)/launch/youbot_driver.launch"/>
+  
+  <!--Bring up youbot gripper-->
+  <include file="$(find youbot_gripper)/launch/bringup.launch"/>
+  
+  <!--Bring up youbot joint state for TF-->
+  <include file="$(find youbot_driver_ros_interface)/launch/youbot_joint_state_publisher.launch"/>
+  <!-- laser driver including front and rear -->
+  <include file="$(find youbot_bringup)/launch/hokuyo.launch"/>
+  
+  <!-- joystick tele operation-->
+  <include file="$(find youbot_teleop)/launch/bringup.launch"/>
+  
+  <!-- twist mixer to select control source-->
+  <include file="$(find youbot_bringup)/launch/twist_mixer.launch"/>
+  
+  <!-- softkinetic driver -->
+  <include file="$(find youbot_bringup)/launch/softkinetics.launch"/>
+  
+  <!-- rear use camera driver -->
+  <!--include file="$(find youbot_bringup)/launch/rear_camera.launch"/-->
+  
+  <!-- laser nodelet -->
+  <include file="$(find youbot_bringup)/launch/laser_pipeline.launch"/>
+  
+  <!-- asad vision nodelet -->
+  <!--include file="$(find youbot_bringup)/launch/asad_vision.launch"/-->
+  
+  <!-- 2d vision nodelet -->
+  <include file="$(find youbot_bringup)/launch/2d_vision.launch"/>
+  
+  <!-- hole detection nodelet -->
+  <include file="$(find youbot_bringup)/launch/hole_detection.launch"/>
+  
+  <!-- rear barrier detection nodelet -->
+  <!--include file="$(find youbot_bringup)/launch/rear_barrier_detection.launch"/-->
+  <!-- marker detection nodelet -->
+  <!--include file="$(find youbot_bringup)/launch/marker_detection.launch"/-->
+  <!-- ############## actionlib & server ############# -->
+  
+  <include file="$(find youbot_arm_joints)/launch/bringup.launch"/>
+  <include file="$(find youbot_arm_joints_trajectory)/launch/bringup.launch"/>
+  <include file="$(find youbot_arm_ik)/launch/bringup.launch"/>
+  <include file="$(find youbot_base_local_move)/launch/bringup.launch"/>
+  <include file="$(find youbot_base_global_move)/launch/bringup.launch"/>
+  <include file="$(find youbot_base_alignment)/launch/bringup.launch"/>
+  <!--include file="$(find youbot_base_align_dock)/launch/bringup.launch"/-->
+  <include file="$(find youbot_load_object)/launch/bringup.launch"/>
+  <include file="$(find youbot_load_object_rotating_table)/launch/bringup.launch"/>
+  <include file="$(find youbot_unload_object_table)/launch/bringup.launch"/>
+  <include file="$(find youbot_unload_object_hole)/launch/bringup.launch"/>
+  <!--include file="$(find youbot_load_object_rotating_table)/launch/bringup.launch"/-->
+  <!--node pkg="rqt_gui" type="rqt_gui" name="rqt_gui" /-->
+</launch>

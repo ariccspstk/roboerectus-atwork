@@ -1,0 +1,588 @@
+#!/usr/bin/python
+import rospy
+import rosparam
+from std_srvs.srv import Empty
+# from refereeBoxClient import *
+from os import getenv
+import subprocess
+import socket
+import copy
+
+SERVER = "192.168.1.103"
+PORT = "11111"
+TEAM = "aricc@work"
+MESSAGE = "connection Test"
+errorPrinted = False
+ON = True  # False
+#ON = False
+
+PLAN_FILE = getenv("HOME") + "/ros_ws/src/aricc-ros-pkg/aricc_demo/rcwork2015/aricc_rcwork_task/config/plan"
+
+def parse_msg(msg):
+    test = msg[0:msg.index("<")]
+    goals = msg[msg.index("<") + 1:-1]  # remove closing bracket
+
+    print "\nTEST: %s\n" % test
+
+    if test == "BNT":
+        parse_bnt(goals)
+
+    if test == "BMT":
+        parse_bmt(goals)
+
+    if test == "BTT":
+        parse_btt(goals)
+
+    if test == "PPT":
+        parse_ppt(goals)
+
+    if test == "CBT":
+        parse_cbt(goals)
+    type_ = test    
+
+def parse_ppt(goals):
+    source_place = goals.split(",")[0]
+    destination_place = goals[goals.find(")") + 2:]
+    obj_list = goals[goals.find("(") + 1:goals.find(")")].split(",")
+    out = "plans:\n"
+    out += output_format(source_place,obj_list,"PICKUP_TABLE",0,"UNKNOWN")
+    out += output_format(destination_place,obj_list, "PLACE_HOLE",0,"UNKNOWN")
+    out += "\n"
+
+    print out
+
+    print "\nsaving plan to file (%s)...\n" % PLAN_FILE
+    write_and_start(PLAN_FILE, out,"ppt")
+
+def parse_cbt(goals):
+    source_place = goals
+    obj_list = ['F20_20_B', 'F20_20_G', 'S40_40_B', 'S40_40_G', 'M20_100', 'M20', 'M30', 'R20', 'V20']
+    out = "plans:\n"
+    out += output_format( source_place, obj_list, "PICKUP_BELT",0,"UNKNOWN")
+    out += "\n"
+
+    print out
+
+    print "\nsaving plan to file (%s)...\n" % PLAN_FILE
+
+    write_and_start(PLAN_FILE, out,"cbt")
+
+
+def parse_bnt(goals):
+    global ON
+    goal_list = goals.split("(")  # split at "("
+    del (goal_list[0])  # delete empty first item
+    for i, g in enumerate(goal_list):
+        goal_list[i] = g[0:-1]  # delete ")"
+     
+    out = "plans:\n"
+    for g in goal_list:
+        label, direction, sleep = tuple(g.split(","))
+        out += output_format(label, [], "'EXIT'", sleep, direction)
+        out += "\n"
+    # End location
+    out += output_format('E', [], "EXIT", 0, "N")
+
+    print out
+
+    print "\nsaving plan to file (%s)...\n" % PLAN_FILE
+    write_and_start(PLAN_FILE, out,"bnt")
+
+
+def parse_bmt(goals):
+    print goals
+
+    goal_list = goals.split(",")
+
+    initial = goal_list[0]
+    source_place = goal_list[1]
+    destination_place = goal_list[2]
+    configuration = goal_list[3][0:goal_list[3].find("(")]
+    object_list = goals[goals.find("(") + 1:goals.find(")")].split(",")
+    final_place = goals[goals.find(")") + 2:len(goals)]
+
+    print "_____________________________"
+    print "initial: %s" % initial
+    print "source_place: %s" % source_place
+    print "destination_place: %s" % destination_place
+    print "configuration: %s" % configuration
+    print "objects:" % object_list
+    for o in object_list:
+        print "\t%s" % o
+    print "final_place: %s" % final_place
+    print "_____________________________"
+
+    out = "plans:\n"
+    out += output_format(initial, [], "EXIT",0,"UNKNOWN")
+    out += output_format(source_place, object_list,"PICKUP_TABLE",0,"UNKNOWN")
+    out += output_format(destination_place, object_list,"PLACE_TABLE",0,"UNKNOWN")
+    out += output_format(final_place,[],"EXIT",0,"UNKNOWN")
+    out += "\n"
+
+    print out
+
+    print "\nsaving plan to file (%s)...\n" % PLAN_FILE
+    write_and_start(PLAN_FILE, out,"bmt")
+
+
+def parse_btt(msg):
+    print "enter parse_btt\n"
+    print msg
+    msg = msg.strip()
+
+    initial_msg, goal_msg = msg.split(';')
+    initial_msg = initial_msg.strip()
+    goal_msg = goal_msg.strip()
+
+    initial_msg = initial_msg[17:-1]
+    goal_msg = goal_msg[14:-1]
+
+    print"\n"
+    print"initial " + initial_msg
+    print"goal "+ goal_msg
+    print"\n"
+
+    initial_list = initial_msg.split('<')
+    del (initial_list[0])
+    for i, g in enumerate(initial_list):
+        initial_list[i] = g[0:-1]
+
+    goal_list = goal_msg.split('<')
+    del (goal_list[0])
+    for i, g in enumerate(goal_list):
+        goal_list[i] = g[0:-1]
+
+
+    # Initial states
+    no_of_init_states = 0
+    initial_states = {}
+    source_list = []
+    for g in initial_list:
+        state_name = g[0:g.index(',')]
+        configuration = g[g.index(',') + 1:g.find("(")]
+        init_objs = g[g.find("(") + 1:g.find(")")]
+        obj_list = init_objs.split(',')
+        for obj in obj_list:
+            item = []
+            item.append(state_name)
+            item.append(obj)
+            source_list.append(item)
+    #print source_list
+    # Goal states
+    no_of_goal_states = 0
+    goal_states = {}
+    dest_list = []
+    for g in goal_list:
+        state_name = g[0:g.index(',')]
+        configuration = g[g.index(',') + 1:g.find("(")]
+        goal_objs = g[g.find("(") + 1:g.find(")")]
+        obj_list = goal_objs.split(',')
+        if state_name in goal_states.keys():
+            state = goal_states[state_name]
+            for obj in obj_list:
+                state.append(obj)
+        else:
+            goal_obj_list = []
+            for obj in obj_list:
+                goal_obj_list.append(obj)
+            goal_states[state_name] = goal_obj_list
+            no_of_goal_states += 1
+    #print "goal_states: %s " % goal_states
+
+    # Sort goal objects 
+    three_object_list = []
+    two_object_list = []
+    one_object_list = []
+    #print "\nSorting Goal:"
+    for (name, goal_obj_list) in goal_states.items():
+        three_object = []
+        two_object = []
+        one_object = []
+        no_of_objects = len(goal_obj_list)
+        if no_of_objects == 3:
+            three_object.append(name)
+            three_object.append(goal_obj_list)
+            three_object_list.append(three_object)
+        elif no_of_objects == 2:
+            two_object.append(name)
+            two_object.append(goal_obj_list)
+            two_object_list.append(two_object)
+        elif no_of_objects == 1:
+            one_object.append(name)
+            one_object.append(goal_obj_list)
+            one_object_list.append(one_object)
+    #print "one_object_list: %s" % one_object_list    
+    #print "two_object_list: %s" % two_object_list    
+    #print "three_object_list: %s" % three_object_list    
+
+
+    # Group goal objects
+    i = 0
+    goal_final = {}
+    goal_final_ = {}
+    group_no = 0
+    goal_item_list_ = []
+    while len(three_object_list) :
+        item_list = []
+        obj = three_object_list[0]
+        goal_item_list_.append(obj)
+        item_list.append(obj)
+        goal_final[group_no] = item_list
+        group_no += 1
+        three_object_list.remove(obj)
+
+    while len(two_object_list) :
+        item_list = []
+        if len(one_object_list):
+            obj = two_object_list[0]
+            item_list.append(obj)
+            goal_item_list_.append(obj)
+            two_object_list.remove(obj)
+
+            obj = one_object_list[0]
+            item_list.append(obj)
+            goal_item_list_.append(obj)
+            one_object_list.remove(obj)
+
+            goal_final[group_no] = item_list
+            group_no += 1
+        else:
+            obj = two_object_list[0]
+            item_list.append(obj)
+            goal_item_list_.append(obj)
+            two_object_list.remove(obj)
+            goal_final[group_no] = item_list
+            group_no += 1
+
+    while len(one_object_list) :
+        item_list = []
+        if len(one_object_list) > 2 :
+            for i in range(0,3):
+                obj = one_object_list[i]
+                item_list.append(obj)
+                goal_item_list_.append(obj)
+                one_object_list.remove(obj)
+            goal_final[group_no] = item_list
+            group_no += 1
+        else:
+            while len(one_object_list):
+                obj = one_object_list[0]
+                item_list.append(obj)
+                goal_item_list_.append(obj)
+                one_object_list.remove(obj)
+            goal_final[group_no] = item_list
+            group_no += 1
+    #print "goal_item_list: %s\n" % goal_item_list_
+    goal_final_ = copy.deepcopy(goal_final)
+    #for (k,z) in goal_final.items():
+    #    goal_final_[k] = z
+    #print "goal_final: %s\n" %  goal_final
+    print "goal_final_: %s\n" %  goal_final_
+        
+    # Group goal and initial    
+    pick_group_ = {}
+    #print "\nSorting Initial:"
+    n = 0
+    while n < len(goal_final):
+        place_list = goal_final[n]
+        pick_list = []
+        while len(place_list):
+            place_item = place_list[0]
+            place_objs = place_item[1]
+            while len(place_objs) :
+                l = place_objs[0]
+                for item in source_list:
+                    if item[1] == l:
+                        pick_list.append(item)
+                        print "pick_list adding %s" % item
+                        source_list.remove(item)
+                        break
+                place_objs.remove(l)              
+            place_list.remove(place_item)            
+        pick_group_[n] = pick_list
+        print "current pick_group %s" % pick_group_[n]
+        n += 1
+    #print "pick_group_: %s\n " % pick_group_  
+    #print "goal_final_ after: %s\n" %  goal_final_
+     
+    # Combine pick list
+    #print "pick final length: %s" % len(pick_group_)
+    pick_objs = []
+    pick_final_ = {}
+    i = 0
+    while i<len(pick_group_):
+        #print "pick_group_[i] %s" % pick_group_[i]
+        pick_objs = pick_group_[i]
+        #print pick_objs
+        if len(pick_objs) == 1:
+            pick_obj_1 = pick_objs[0]
+            state_1 = pick_obj_1[0]
+            item_new = []
+            pick_new = []
+            obj_new = []
+            item_new.append(state_1)
+            obj_new.append(pick_obj_1[1])
+            item_new.append(obj_new)
+            pick_new.append(item_new)
+            pick_final_[i] = pick_new
+        elif len(pick_objs) == 2:
+            pick_obj_1 = pick_objs[0]
+            pick_obj_2 = pick_objs[1]
+            state_1 = pick_obj_1[0]
+            state_2 = pick_obj_2[0]
+            if state_1 == state_2:
+                item_new = []
+                pick_new = []
+                obj_new = []
+                item_new.append(state_1)
+                obj_new.append(pick_obj_1[1])
+                obj_new.append(pick_obj_2[1])
+                item_new.append(obj_new)
+                pick_new.append(item_new)
+                pick_final_[i] = pick_new
+            else:
+                item_new = []
+                pick_new = []
+                obj_new = []
+                item_e = []
+                obj_e = []
+                item_new.append(state_1)
+                obj_new.append(pick_obj_1[1])
+                item_new.append(obj_new)
+                pick_new.append(item_new)
+                
+                item_e.append(state_2)
+                obj_e.append(pick_obj_2[1])
+                item_e.append(obj_e)
+                pick_new.append(item_e)
+                pick_final_[i] = pick_new
+        elif len(pick_objs) == 3:
+            pick_obj_1 = pick_objs[0]
+            pick_obj_2 = pick_objs[1]
+            pick_obj_3 = pick_objs[2]
+            state_1 = pick_obj_1[0]
+            state_2 = pick_obj_2[0]
+            state_3 = pick_obj_3[0]
+            if state_1 == state_2:
+                item_new = []
+                pick_new = []
+                obj_new = []
+                item_e = []
+                obj_e = []
+                item_new.append(state_1)
+                obj_new.append(pick_obj_1[1])
+                obj_new.append(pick_obj_2[1])
+                if state_1 == state_3:
+                    obj_new.append(pick_obj_3[1])
+                    item_new.append(obj_new)
+                    pick_new.append(item_new)
+                    pick_final_[i] = pick_new
+                else:
+                    item_new.append(obj_new)
+                    pick_new.append(item_new)
+                    item_e.append(state_3)
+                    obj_e.append(pick_obj_3[1])
+                    item_e.append(obj_e)
+                    pick_new.append(item_e)
+                    pick_final_[i] = pick_new
+            elif state_1 == state_3:
+                item_new = []
+                obj_new = []
+                item_e = []
+                obj_e = []
+                pick_new = []
+                item_new.append(state_1)
+                obj_new.append(pick_obj_1[1])
+                obj_new.append(pick_obj_3[1])
+                item_new.append(obj_new)
+                pick_new.append(item_new)
+                
+                item_e.append(state_2)
+                obj_e.append(pick_obj_2[1])
+                item_e.append(obj_e)
+                pick_new.append(item_e)
+
+                pick_final_[i] = pick_new
+            elif state_2 == state_3:
+                item_new = []
+                pick_new = []
+                obj_new = []
+                item_e = []
+                obj_e = []
+                item_new.append(state_2)
+                obj_new.append(pick_obj_2[1])
+                obj_new.append(pick_obj_3[1])
+                item_new.append(obj_new)
+                pick_new.append(item_new)
+                
+                item_e.append(state_1)
+                obj_e.append(pick_obj_1[1])
+                item_e.append(obj_e)
+                pick_new.append(item_e)
+                
+                pick_final_[i] = pick_new
+            else:
+                item_new = []
+                item_e = []
+                item_e_e = []
+                obj_new = []
+                obj_e = []
+                obj_e_e = []
+                pick_new = []
+                
+                item_new.append(state_1)
+                obj_new.append(pick_obj_1[1])
+                item_new.append(obj_new)
+                pick_new.append(item_new)
+
+                item_e.append(state_2)
+                obj_e.append(pick_obj_2[1])
+                item_e.append(obj_e)
+                pick_new.append(item_e)
+
+                item_e_e.append(state_3)
+                obj_e_e.append(pick_obj_3[1])
+                item_e_e.append(obj_e_e)
+                pick_new.append(item_e_e)
+
+                pick_final_[i] = pick_new
+        else:
+            break
+        i += 1
+    print "pick_final_: % s\n" % pick_final_    
+    
+    # Output
+    out = "plans:\n"
+    
+    j = 0
+    #print "goal_final_ b4 out %s" % goal_final_
+    while j < len(pick_final_):
+        pick = pick_final_[j]
+        place = goal_final_[j]
+        print "pick: %s" % pick
+        print "place: %s" % place
+        for objs in pick:
+            #print "pick objs: %s" % objs
+            pick_name = objs[0]
+            pick_it = objs[1]
+            out += output_format(pick_name, pick_it,"PICKUP_TABLE",0,"UNKNOWN")
+        for it in place:
+            #print"place objs: %s" %  it
+            place_name = it[0]
+            place_it = it[1]
+            if place_name == "D4":
+                action = "PLACE_HOLE"
+            else:
+                action = "PLACE_TABLE"
+            out += output_format(place_name, place_it,action,0,"UNKNOWN")
+        j += 1
+     
+
+    print "\nOutput is\n%s " % out
+    print "\nsaving plan to file (%s)...\n" % PLAN_FILE
+    write_and_start(PLAN_FILE, out,"btt")
+
+def output_format(table, objs, obj_type, pause, direction):
+    output = "  - {name: '%s', objects: %s, action: '%s', pause: '%s', dir: '%s'}\n" % (table, objs, obj_type, pause, direction)
+    return output
+
+def write_and_start(filename_, buffer_string,task):
+    filename = filename_ + "-" + task + ".yaml"
+    print "task: %s" % task
+    print "filename: %s" % filename
+    f = open(filename, "w+")
+    f.write(buffer_string)
+    f.close()
+
+    paramlist = rosparam.load_file(filename)
+    for params, ns in paramlist:
+        rosparam.upload_params(ns, params)
+
+    if ON:
+        # send start command to smach!
+        start = rospy.ServiceProxy("/start_SMACH", Empty)
+        try:
+            rospy.wait_for_service('/start_SMACH')
+            start()
+        except rospy.ServiceException, e:
+            print "Service call failed: %s" % e
+
+
+
+            # start launch file
+            #process = subprocess.Popen(["roslaunch", "slaw_btt", "btt.launch"])
+            #process.wait()
+    else:
+#        process = subprocess.Popen(["ping", "127.0.0.1"])
+        process = subprocess.Popen(["ping", "192.168.1.103"])
+        process.wait()
+
+
+def obtainTaskSpecFromServer(ServerIP, ServerPort, TeamName):
+    # return message
+    while True:
+        global errorPrinted
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.connect((ServerIP, int(ServerPort)))
+            errorPrinted = False
+        except socket.error, err:
+            if not errorPrinted:
+                rospy.loginfo("Connection to %s:%s not succsesfull: %s", ServerIP, ServerPort, err)
+                rospy.loginfo("retrying ...")
+                errorPrinted = True
+            rospy.sleep(1.)
+        else:
+            s.send(MESSAGE)
+            waitForData(s)
+        rospy.loginfo("Connected to %s : %s", ServerIP, ServerPort)
+
+
+def waitForData(s):
+    rospy.loginfo("Connection Successfull")
+    BUFFER_SIZE = 1024
+    while True:
+        try:
+            s.send("ALIVE")
+            data = s.recv(BUFFER_SIZE)
+            parse_msg(data)
+        except socket.error, err:
+            rospy.loginfo("Connection closed")
+            s.close()
+            rospy.sleep(2.)
+            return
+
+
+if __name__ == "__main__":
+    rospy.init_node('aricc_refbox')
+    #obtainTaskSpecFromServer(SERVER, PORT, TEAM)
+     
+    #goal all three
+    #msg = "BTT<initialsituation(<S1,line(1,3)><S4,line(3)><S2,line(2)><S3,line(1,2)>);goalsituation(<D3,line(1,2,3)><S5,line(1,2,3)>)>"
+    #goal all two
+    #msg = "BTT<initialsituation(<S1,line(1,2)><S4,line(2,3)><S2,line(2)><S3,line(3,2)>);goalsituation(<D3,line(2,3)><S5,line(1,2)>)>"
+    #goal all one
+    #msg = "BTT<initialsituation(<S1,line(1,2,1)><S4,line(2,3)><S2,line(2)><S3,line(3,2)>);goalsituation(<D3,line(3)><D4,line(1)><S4,line(2)><D4,line(1)>)>"
+    #123,1,2
+    #msg = "BTT<initialsituation(<S1,line(1,2,1)><S4,line(2,3,1)><S2,line(2)><S3,line(3,2)>);goalsituation(<D3,line(3,2,1)><S4,line(1,2)><D4,line(1)>)>"
+    #123,1
+    msg = "BTT<initialsituation(<S1,line(1,2)><S4,line(2,3)><S2,line(2)><S3,line(3,2)>);goalsituation(<D3,line(3,2,1)><D4,line(1)>)>"
+    #123,12,1
+    #
+    #msg = "BTT<initialsituation(<S4,line(M20_100,R20)>);goalsituation(<S3,line(M20_100)><S5,line(R20)>)>"
+
+    #msg = "BTT<initialsituation(<D1,line(M20_100,S40_40_B,F20_20_b)><D2,line(M20_100)><D1,line(F20_20_B,S40_40_B)>);goalsituation(<D3,line(S40_40_B,M20_100,F20_20_B)><D4,line(M20_100)>)>"
+
+    #msg = "BTT<initialsituation(<S1,line(1,2)><S2,line(3,1)><S1,line(3)><S3,line(4,2,3)><S4,line(1,2)>);goalsituation(<D1,line(1)><D1,line(2)><D2,line(3,4)><D3,line(1)><D4,line(1,2,3)><D5,line(2)><D6,line(3)>)>"
+    
+    #msg = "BTT<initialsituation(<S1,line(1,2)><S2,line(3,1)><S1,line(3)><S3,line(4,2,3)><S4,line(1,2)>);goalsituation(<D1,line(1,2)><D2,line(3,4)><D3,line(1,3)><D4,line(1,2)><D5,line(2,3)>)>"
+    
+    #msg = "BTT<initialsituation(<S1,line(1,2)><S2,line(1)><S3,line(4,2,3)><S4,line(1,2,3)>);goalsituation(<D1,line(1,2)><D2,line(3)><D3,line(1,3,4)><D4,line(2)><D5,line(2)>)>"
+    
+    #msg = "BTT<initialsituation(<D1,line(M20_100,S40_40_B)><S1,line(M20_100)>);goalsituation(<D1,line(S40_40_B,M20_100)><D2,line(M20_100)>)>"
+    #msg = "PPT<D1,(M20_100,F20_20_B,F20_20_B),D2>"
+    #msg = "BNT<(S6,N,3)(S2,N,3)(D1,S,3)(S5,W,3)(D3,E,3)(D4,S,3)>"
+    #msg = "CBT<D1>"
+    #msg = "BMT<S6,S6,S7,line(F20_20_G,F20_20_B,M20_100),S7>"
+    #print msg
+    parse_msg(msg)

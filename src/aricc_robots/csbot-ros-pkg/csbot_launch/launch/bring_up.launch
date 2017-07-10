@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+
+<launch>
+  <include file="$(find csbot_launch)/launch/rosserial_server.launch" />
+  <include file="$(find csbot_launch)/launch/webcam.launch" />
+  <include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch" />
+  <include file="$(find csbot_launch)/launch/web_video_server.launch" />
+</launch>

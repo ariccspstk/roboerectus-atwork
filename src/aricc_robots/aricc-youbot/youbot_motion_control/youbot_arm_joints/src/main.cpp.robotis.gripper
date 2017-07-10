@@ -1,0 +1,345 @@
+#include <iostream>
+#include <assert.h>
+#include <ros/ros.h>
+#include "std_msgs/Bool.h"
+#include "std_msgs/Empty.h"
+#include "brics_actuator/JointPositions.h"
+#include "brics_actuator/JointVelocities.h"
+#include <actionlib/server/simple_action_server.h>
+#include <youbot_arm_joints/JointAction.h>
+#include <sensor_msgs/JointState.h>
+
+#include <boost/units/systems/si/length.hpp>
+#include <boost/units/systems/si/plane_angle.hpp>
+#include <boost/units/io.hpp>
+#include <boost/units/systems/si/angular_velocity.hpp>
+#include <boost/units/systems/si/velocity.hpp>
+#include <boost/units/systems/angle/degrees.hpp>
+#include <boost/units/conversion.hpp>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string>
+#include <utility>
+
+class JointAction{
+
+public:
+
+protected:
+  ros::NodeHandle nh_, pnh_;
+  actionlib::SimpleActionServer
+    <youbot_arm_joints::JointAction> action_;
+  std::string action_name_;
+  
+  std::vector<double> joints_state_;
+  std::vector< std::pair<double, double> >joints_limit_;
+  bool is_gripper_pub_;
+  bool is_arm_pub_;
+  double rate_;
+  boost::mutex mutex_;
+
+  youbot_arm_joints::JointFeedback feedback_;
+  youbot_arm_joints::JointResult result_;
+ 
+  ros::Publisher pub_arm_;
+  ros::Publisher pub_gripper_open_;
+  ros::Publisher pub_gripper_close_light_;
+  ros::Publisher pub_gripper_close_heavy_;
+  ros::Subscriber sub_;
+  ros::Time time_now_, time_start_; 
+  
+public:
+  JointAction(std::string name) :
+    pnh_("~"),
+    action_(nh_, name, boost::bind(&JointAction::executeCB, this, _1), false),
+    action_name_(name), is_arm_pub_(false), is_gripper_pub_(false){
+    ROS_INFO("----------"); 
+    if(loadJointsLimit() == 0) return;
+    pub_arm_ = nh_.advertise<brics_actuator::JointPositions > 
+      ("arm_1/arm_controller/position_command", 1);
+    pub_gripper_open_ =  nh_.advertise<std_msgs::Empty > 
+      ("gripper_open", 1);
+    pub_gripper_close_light_ =  nh_.advertise<std_msgs::Empty > 
+      ("gripper_close_light", 1);
+    pub_gripper_close_heavy_ =  nh_.advertise<std_msgs::Empty > 
+      ("gripper_close_heavy", 1);
+    pnh_.param<double>("rate", rate_, 20);
+    action_.start();
+    ROS_INFO("Starting %s ...", name.c_str());
+  }
+
+  ~JointAction(void){
+  }
+
+  void subscribe(){
+    sub_ = nh_.subscribe("/joint_states"  ,1,
+      &JointAction::jointsCB,this);
+  }
+
+  void unsubscribe(){
+    sub_.shutdown();
+  }
+  
+  int loadJointsLimit(){
+    ROS_INFO("Loading joints limit ...");
+    try{
+      XmlRpc::XmlRpcValue list;
+      if( !pnh_.hasParam("joint_limit") ){
+        ROS_ERROR("Cannot find joint limit list");
+        return 0;
+      }
+      pnh_.getParam("joint_limit", list);
+      ROS_ASSERT(list.getType() == XmlRpc::XmlRpcValue::TypeArray);
+      ROS_INFO("Found list size:%d", list.size());
+      joints_limit_.clear();
+      for(size_t i = 0; i < list.size(); ++i){
+        ROS_ASSERT(list[i].getType() == XmlRpc::XmlRpcValue::TypeString);
+        std::string min = static_cast<std::string>(list[i]);
+        ROS_ASSERT(list[++i].getType() == XmlRpc::XmlRpcValue::TypeString);
+        std::string max = static_cast<std::string>(list[i]);
+        //ROS_INFO("[MIN:%s, MAX:%s]",min.c_str(), max.c_str());
+        std::pair<double, double> limit = std::make_pair( 
+          atof(min.c_str()), atof(max.c_str()) ); 
+        joints_limit_.push_back(limit);
+        ROS_INFO("[MIN:%lf, MAX:%lf]", joints_limit_.at(i/2).first,
+          joints_limit_.at(i/2).second);
+      }
+    }
+    catch(ros::Exception e){
+      ROS_ERROR("%s", e.what());
+      return 0;
+    }
+    return 1;
+  }
+  
+  void jointsCB(const sensor_msgs::JointState::ConstPtr& msg){
+    boost::mutex::scoped_lock lock(mutex_);
+    joints_state_.clear();
+    if(msg->position.size() != 7 && msg->name[0] == "arm_joint_1"){ 
+      ROS_WARN("It should be 7 joints, received %lu joints!", 
+        msg->position.size());
+      return;
+    }
+    for(size_t i = 0; i < msg->position.size(); ++i)
+      joints_state_.push_back(msg->position[i]);
+  }
+  
+  bool isArmGripperReached(std::vector<double> goal){
+    std::vector<double> arm_goal;
+    std::vector<double> gripper_goal;
+    for(unsigned int i = 0; i < 5; ++i)
+      arm_goal.push_back(goal.at(i));
+    gripper_goal.push_back(goal.at(5));
+    gripper_goal.push_back(goal.at(6)); 
+    if ( !isArmReached(arm_goal) || !isGripperReached(gripper_goal) )
+      return false;
+    return true;
+  }
+
+  bool isGripperReached( std::vector<double> goal){
+    boost::mutex::scoped_lock lock(mutex_);
+    if(!is_gripper_pub_){
+      std_msgs::Empty msg;
+      if(goal.at(0) == 1 && goal.at(1) == 1)
+        pub_gripper_open_.publish(msg);
+      else if(goal.at(0) == 0.5 && goal.at(1) == 0.5)
+        pub_gripper_close_light_.publish(msg);
+      else if(goal.at(0) == 0 && goal.at(1) == 0)
+        pub_gripper_close_heavy_.publish(msg);
+      is_gripper_pub_ = true;
+      return false;
+    }
+    sleep(1);
+    return true;
+  }
+
+  bool isArmReached( std::vector<double> goal, 
+    double tolerance = 2.0/180.0*M_PI){ 
+    boost::mutex::scoped_lock lock(mutex_);
+    double diff = 0.0;
+  /*Checking hasSentGoal variable to make sure
+    only sent the goal one time.
+  */ 
+    if(!is_arm_pub_){
+      std::stringstream joint_name;
+      brics_actuator::JointPositions msg;
+      for (size_t i = 0; i < goal.size(); ++i){
+        brics_actuator::JointValue joint_value;
+        joint_name.str("");
+        joint_name << "arm_joint_" << (i + 1);
+        joint_value.joint_uri = joint_name.str();
+        joint_value.value = goal.at(i);
+        joint_value.unit = boost::units::to_string(boost::units::si::radian);
+        msg.positions.push_back(joint_value);
+      }
+      pub_arm_.publish(msg);
+      is_arm_pub_ = true;
+      return false;
+    }
+
+    if(joints_state_.empty()){
+      ROS_DEBUG("%s: Cannot receive joints state ", action_name_.c_str());
+      return false;
+    }
+
+    //Checking the goal is reached or not
+    for( size_t i = 0; i < goal.size(); ++i ){
+      diff = goal.at(i) - joints_state_.at(i);
+      //ROS_INFO("Goal: %lf, Current:%lf, Diff: %lf",
+      //  goal.at(i),joints_state_.at(i),diff);
+      if( fabs(diff) >= tolerance ) return false;
+    }
+    return true;
+  }
+
+  void resetState(){
+    is_gripper_pub_ = false;
+    is_arm_pub_     = false;
+    time_start_ = ros::Time::now();
+    unsubscribe();
+  }
+  
+  int isGoalValid( youbot_arm_joints::JointGoal& goal){
+    ROS_INFO("%s: accept goal", action_name_.c_str());
+    std::string name = goal.name;
+    size_t pos_size = goal.joints.size();
+    if( isnan(goal.timeout) ||
+        isinf(goal.timeout) || 
+        ( goal.name != "arm" && 
+          goal.name != "gripper" &&
+          goal.name != "arm+gripper") ) return 0;
+    for(size_t i = 0; i < pos_size; ++i){
+      if(isnan(goal.joints[i]) || isinf(goal.joints[i])) return 0;
+    }
+
+    if( name == "arm" ){
+      ROS_INFO("Goal: %lf, %s, (%lf,%lf,%lf,%lf,%lf)",goal.timeout, 
+        goal.name.c_str(), goal.joints[0], goal.joints[1], goal.joints[2],
+        goal.joints[3], goal.joints[4]);
+      if(pos_size != 5){
+        ROS_WARN("arm goal should have 5 postions, but received %lu", pos_size);
+        return 0;
+      }
+      for(size_t i = 0; i < goal.joints.size(); ++i){
+        if( (goal.joints.at(i) < joints_limit_.at(i).first) ||
+            (goal.joints.at(i) > joints_limit_.at(i).second) ) {
+          ROS_WARN("Joint_%lu: [%.3lf],out of limit. Should be [%.3lf, %.3lf]",
+             i, goal.joints.at(i), joints_limit_.at(i).first, 
+             joints_limit_.at(i).second);
+          goal.joints.at(i) = std::min(goal.joints.at(i), 
+            joints_limit_.at(i).second);  
+          goal.joints.at(i) = std::max(goal.joints.at(i), 
+            joints_limit_.at(i).first);  
+        }
+      }
+    }
+
+    if( name == "gripper" ){
+      ROS_INFO("Goal: %lf, %s, (%lf,%lf)",goal.timeout, 
+        goal.name.c_str(), goal.joints[0], goal.joints[1]);
+      if(pos_size != 2){
+        ROS_ERROR("gripper goal should have 2 postions, but received %lu", pos_size);
+        return 0;
+      }
+      for(size_t i = 0; i < goal.joints.size(); ++i){
+        if( (goal.joints.at(i) < joints_limit_.at(i+5).first) ||
+            (goal.joints.at(i) > joints_limit_.at(i+5).second) ){ 
+          ROS_ERROR("Joint out of limit");
+          return 0;
+        }
+      }
+    }
+
+    if( name == "arm+gripper" ){
+      ROS_INFO("Goal: %lf, %s, (%lf,%lf,%lf,%lf,%lf,%lf,%lf)",goal.timeout, 
+        goal.name.c_str(), goal.joints[0], goal.joints[1], goal.joints[2],
+        goal.joints[3], goal.joints[4], goal.joints[5], goal.joints[6]);
+      if(pos_size != 7){
+      ROS_WARN("arm+gripper goal should have 7 postions, but received %lu", pos_size);
+      return 0;
+      }
+      for(size_t i = 0; i < goal.joints.size(); ++i){
+        if( (goal.joints.at(i) < joints_limit_.at(i).first) ||
+            (goal.joints.at(i) > joints_limit_.at(i).second) ) {
+          ROS_ERROR("Joint out of limit");
+          return 0;
+        }
+      }
+    }
+    return 1;
+  }
+
+  void setAborted(youbot_arm_joints::JointResult result, std::string str = ""){
+    ROS_ERROR("%s: Aborted, %s", action_name_.c_str(), str.c_str());
+    action_.setAborted(result);
+    resetState();
+  }
+
+  void setSucceeded(youbot_arm_joints::JointResult result){
+    ROS_INFO("%s: Succeeded, take %lf s", action_name_.c_str(),
+      (time_now_ - time_start_).toSec());
+    action_.setSucceeded(result);
+    resetState();
+  }
+
+  void setPreempted(){
+    ROS_WARN("%s: Preempted", action_name_.c_str());
+    action_.setPreempted();
+    resetState();
+  }
+
+  void executeCB(const youbot_arm_joints::JointGoalConstPtr &goal_msg){
+    youbot_arm_joints::JointGoal goal = *goal_msg;
+    resetState();
+    if( isGoalValid(goal) == 0 ){
+      setAborted(result_,"Goal is invalid");
+      return;
+    }
+    time_start_ = ros::Time::now();
+    ros::Rate r(rate_);
+    while(action_.isActive() || ros::ok()){
+      subscribe();
+      time_now_ = ros::Time::now(); 
+      if((time_now_ - time_start_).toSec() >= goal.timeout &&
+        goal.timeout != 0.0){
+        setAborted(result_, "Timeout");
+        return;
+      }
+
+      if( action_.isPreemptRequested() ){
+        if( action_.isNewGoalAvailable() ){
+          goal = *(action_.acceptNewGoal());
+          if( isGoalValid(goal) == 0 ){
+            action_.setAborted(result_, "Goal is invalid");
+            return;
+          }
+          else {
+            ROS_INFO("%s: accept new goal", action_name_.c_str());
+            resetState();
+          }
+        }
+        else{ setPreempted(); return; }
+      }
+  
+      if( (goal.name == "arm") &&
+        isArmReached(goal.joints)){ setSucceeded(result_); return; }
+
+      else if( (goal.name == "gripper") &&
+        isGripperReached(goal.joints)) { setSucceeded(result_); return; }
+
+      else if( (goal.name == "arm+gripper") &&
+        isArmGripperReached(goal.joints)) { setSucceeded(result_); return; }
+      r.sleep();
+      if( r.cycleTime() > ros::Duration(1.0/rate_) )
+        ROS_WARN("%s: Control desired rate of %.3lfHz... the loop actually took %.4lf seconds", action_name_.c_str(), rate_, r.cycleTime().toSec());
+    }
+  }
+
+};
+
+int main(int argc, char **argv) {
+  ros::init(argc, argv, "youbot_arm_joints_server");
+  JointAction action(ros::this_node::getName());
+  ros::spin();
+  return 0;
+}

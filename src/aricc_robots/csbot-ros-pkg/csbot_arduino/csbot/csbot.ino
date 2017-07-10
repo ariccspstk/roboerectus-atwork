@@ -1,0 +1,832 @@
+//ROS Header files
+#if ARDUINO >= 100
+#include "Arduino.h"
+#else
+#include "WProgram.h"
+#endif
+
+#include <ros.h>
+#include <ros/time.h>
+#include <std_msgs/String.h>
+#include <std_msgs/Empty.h>
+#include <geometry_msgs/Twist.h>
+
+#include <Wire.h>
+#include <QTRSensors.h>
+#include "simple_filters.h"
+#include "pid_controller.h"
+
+#define ADDRESS 0x60 //defines address of compass
+#define NUM_SENSORS             6  // number of sensors used
+#define NUM_SAMPLES_PER_SENSOR  4  // average 4 analog samples per sensor reading
+#define EMITTER_PIN             QTR_NO_EMITTER_PIN  // emitter is controlled by digital pin 2
+
+QTRSensorsAnalog qtra((unsigned char[]) {0, 1, 2, 3, 4, 5}, 
+  NUM_SENSORS, NUM_SAMPLES_PER_SENSOR, EMITTER_PIN);
+
+//Const variables
+const uint16_t  SENSOR_BUFFER_SIZE = 3;
+const uint16_t  CMP_Timeout = 30;
+const unsigned long US_Timeout = 20000;
+
+//CS_Scale
+const uint16_t CS_SCALE_B = 1;
+const uint16_t CS_SCALE_G = 1;
+const uint16_t CS_SCALE_R = 1;
+
+const uint16_t MOTOR_SAMPLES = 5;
+const uint16_t MOTOR_MAX_VEL = 70;
+const uint16_t MOTOR_MIN_VEL = 30;
+const uint16_t MOTOR_VEL_STEP = 5;
+
+const uint16_t US_MAX_DISTANCE = 180; //Max ultrasonic detection distance
+const uint16_t LOOP_RATE = 10; //in x ms/loop
+const float BATTERY_LIMIT = 115; //Battery warning boundary
+
+/*PIN Definition*/
+
+//LED Pin for system
+volatile const char PIN_LED1  = 53;
+volatile const char PIN_LED2  = 52;
+volatile const char PIN_LED4  = 42;
+volatile const char PIN_LED5  = 43;
+
+//LED Pin for user
+const char PIN_ULED1  = 48;
+const char PIN_ULED2  = 49;
+const char PIN_ULED3  = 50;
+const char PIN_ULED4  = 51;
+
+//BTN Pin
+const char PIN_BTN1  = 22;
+const char PIN_BTN2  = 23;
+const char PIN_BTN3  = 24;
+
+// Motor Pin
+const int PIN_MT1_IN1 = 2;
+const int PIN_MT1_IN2 = 44;
+const int PIN_MT2_IN1 = 46;
+const int PIN_MT2_IN2 = 45; 
+
+// Ultrasonic Pin
+const int PIN_US1 = 12;
+const int PIN_US2 = 13;
+const int PIN_US3 = 11;
+
+//ros
+ros::NodeHandle nh_;
+//-------------------- ROS Callback function --------------------- //
+void velCb( const geometry_msgs::Twist& msg){
+  digitalWrite(PIN_LED1, digitalRead(PIN_LED1)^1);
+  float vx  = msg.linear.x;
+  float vy  = msg.linear.y;
+  float vth = msg.angular.z;
+  MoveBase(vx,vy,vth);
+}
+
+void ledCb( const std_msgs::Empty& msg){
+  digitalWrite(PIN_LED1, digitalRead(PIN_LED1)^1);
+  digitalWrite(PIN_LED2, digitalRead(PIN_LED2)^1);
+}
+
+std_msgs::String msg_;
+ros::Publisher pub_( "csbot_info", &msg_);
+ros::Subscriber<geometry_msgs::Twist> sub_vel_("cmd_vel", velCb );
+ros::Subscriber<std_msgs::Empty> sub_led_("led", ledCb );
+
+//Low battery flag
+bool low_battery_flag_ = false;
+/*End of PIN Definition*/
+
+int16_t speed1 = 0, speed2 = 0, speed3 = 0, speed4 = 0;
+int16_t speed1Pre = 0, speed2Pre = 0;  
+
+//LED Counter
+uint8_t LED_1_Count = 0;
+uint8_t LED_2_Count = 0;
+uint8_t LED_4_Count = 0;
+uint8_t LED_5_Count = 0;
+uint8_t ULED_1_Count = 0;
+uint8_t ULED_2_Count = 0;
+uint8_t ULED_3_Count = 0;
+uint8_t ULED_4_Count = 0;
+
+//Sensor reading
+SimpleMedianFilter<uint16_t, SENSOR_BUFFER_SIZE> adc_filter_0_;
+SimpleMedianFilter<uint16_t, SENSOR_BUFFER_SIZE> adc_filter_1_;
+SimpleMedianFilter<uint16_t, SENSOR_BUFFER_SIZE> adc_filter_2_;
+SimpleMedianFilter<uint16_t, SENSOR_BUFFER_SIZE> adc_filter_3_;
+SimpleMedianFilter<uint16_t, SENSOR_BUFFER_SIZE> adc_filter_4_;
+SimpleMedianFilter<uint16_t, SENSOR_BUFFER_SIZE> adc_filter_5_;
+
+SimpleMedianFilter<uint16_t, SENSOR_BUFFER_SIZE> us_filter_0_;
+SimpleMedianFilter<uint16_t, SENSOR_BUFFER_SIZE> us_filter_1_;
+SimpleMedianFilter<uint16_t, SENSOR_BUFFER_SIZE> us_filter_2_;
+
+SimpleMedianFilter<uint16_t, SENSOR_BUFFER_SIZE> cmp_filter_;
+
+uint16_t dist_value_[3] = {0};
+uint16_t ir_value_[6] = {0};
+uint16_t cs_value_[6] = {0};
+uint8_t battery_value_ = 0;
+uint8_t robot_id_value_ = 2;
+int16_t compass_value_ = 0;
+int16_t compass_init_value_ = 0;
+bool compass_first_time_ = true;
+
+//PushBtn Value
+int PushBtnVal1 = 0;
+int PushBtnVal2 = 0;
+int PushBtnVal3 = 0;
+int LastButtonState1 = LOW;
+int LastButtonState2 = LOW;
+int LastButtonState3 = LOW;
+int ButtonPushCounter1 = 0;   // counter for the number of button presses
+int ButtonPushCounter2 = 0;   // counter for the number of button presses
+int ButtonPushCounter3 = 0;   // counter for the number of button presses
+
+//Battery Reading
+
+boolean IsBatteryLow = 0;
+
+// ------------------- Sensor data processing -------------------- //
+float MapFloat(float x, float in_min, float in_max, 
+               float out_min, float out_max){
+  return (x-in_min)*(out_max-out_min)/(in_max-in_min)+out_min;
+}
+
+void UltrasonicFilter(uint16_t past, uint16_t& current, uint16_t tolerance = 20){
+  uint16_t diff = abs(past - current);
+  if( (diff > tolerance) ) current = past;
+}
+
+uint16_t GetOneUltrasonic(uint16_t pinDef, uint16_t max_cm_distance = US_MAX_DISTANCE){
+  uint16_t maxEchoTime = max_cm_distance * 58 + (58/2);
+  pinMode(pinDef, OUTPUT);
+  digitalWrite(pinDef, LOW);
+  delayMicroseconds(2);
+  digitalWrite(pinDef, HIGH);
+  delayMicroseconds(5);
+  digitalWrite(pinDef, LOW);
+  pinMode(pinDef, INPUT);
+  uint16_t reading = (uint16_t)pulseIn(pinDef, HIGH, maxEchoTime)/58;
+  return reading;
+}
+
+void GetAllUltrasonics(){
+  if(SENSOR_BUFFER_SIZE <=0 ) return;
+  uint16_t raw_reading = US_MAX_DISTANCE;
+  
+  //US_LEFT 
+  raw_reading = GetOneUltrasonic(PIN_US1);
+  if(raw_reading != 0) us_filter_0_.push(raw_reading);
+  dist_value_[0] = (uint16_t)min(us_filter_0_.pop(),US_MAX_DISTANCE);
+  raw_reading = US_MAX_DISTANCE;
+
+  //US_FRONT 
+  raw_reading = GetOneUltrasonic(PIN_US2);
+  if(raw_reading != 0) us_filter_1_.push(raw_reading);
+  dist_value_[1] = (uint16_t)min(us_filter_1_.pop(),US_MAX_DISTANCE);
+  raw_reading = US_MAX_DISTANCE;
+  
+  //US_RIGHT 
+  raw_reading = GetOneUltrasonic(PIN_US3);
+  if(raw_reading != 0) us_filter_2_.push(raw_reading);
+  dist_value_[2] = (uint16_t)min(us_filter_2_.pop(),US_MAX_DISTANCE);
+  raw_reading = US_MAX_DISTANCE;
+}
+
+void GetCompass(){
+  //interrupts();
+  byte highByte;
+  byte lowByte;
+  long lastTimeCheck;
+  Wire.beginTransmission(ADDRESS);   //starts communication with cmps03
+  Wire.write(2);                     //Sends the register we wish to read
+  Wire.endTransmission();
+  //delay(1);
+  Wire.requestFrom(ADDRESS, 2);     //requests high byte 
+  lastTimeCheck = millis();
+  //while there is a byte to receive
+  while(Wire.available() < 2){
+    if(millis() - lastTimeCheck > CMP_Timeout){
+      compass_value_ = 0;
+      return;
+    }
+  }
+  highByte = Wire.read();           //reads the byte as an integer
+  lowByte  = Wire.read();
+  compass_value_ = ((highByte<<8)+lowByte)/10;
+  if(!compass_first_time_){
+    compass_value_ -= compass_init_value_; 
+    if(compass_value_<0) compass_value_ += 360;
+    cmp_filter_.push((uint16_t)compass_value_);
+    compass_value_ = cmp_filter_.pop();
+  }
+  else{
+    compass_first_time_ = false;
+    compass_init_value_ = compass_value_;
+  }
+  //noInterrupts();
+}
+
+void GetIRSensor(){
+  // read raw sensor values
+  uint16_t ir_position = qtra.readLine(ir_value_);
+  adc_filter_0_.push((uint16_t)map(ir_value_[0],1023,1,0,255));
+  adc_filter_1_.push((uint16_t)map(ir_value_[1],1023,1,0,255));
+  adc_filter_2_.push((uint16_t)map(ir_value_[2],1023,1,0,255));
+  adc_filter_3_.push((uint16_t)map(ir_value_[3],1023,1,0,255));
+  adc_filter_4_.push((uint16_t)map(ir_value_[4],1023,1,0,255));
+  adc_filter_5_.push((uint16_t)map(ir_value_[5],1023,1,0,255));
+  
+  ir_value_[0] = adc_filter_0_.pop();
+  ir_value_[1] = adc_filter_1_.pop();
+  ir_value_[2] = adc_filter_2_.pop();
+  ir_value_[3] = adc_filter_3_.pop();
+  ir_value_[4] = adc_filter_4_.pop();
+  ir_value_[5] = adc_filter_5_.pop();
+}
+
+void GetColorSensor(){
+  /*
+  for(uint16_t i = 0; i < SENSOR_BUFFER_SIZE; ++i){
+    cs_reading_buffer_[i] = analogRead(A3) *CS_SCALE_R;
+  }
+  cs_value_[0] = SimpleMedianFilter(cs_reading_buffer_,SENSOR_BUFFER_SIZE);
+  
+  for(uint16_t i = 0; i < SENSOR_BUFFER_SIZE; ++i){
+    cs_reading_buffer_[i] = analogRead(A4) *CS_SCALE_R;
+  }
+  cs_value_[1] = SimpleMedianFilter(cs_reading_buffer_,SENSOR_BUFFER_SIZE);
+  
+  for(uint16_t i = 0; i < SENSOR_BUFFER_SIZE; ++i){
+    cs_reading_buffer_[i] = analogRead(A5) *CS_SCALE_R;
+  }
+  cs_value_[2] = SimpleMedianFilter(cs_reading_buffer_,SENSOR_BUFFER_SIZE);
+  
+  for(uint16_t i = 0; i < SENSOR_BUFFER_SIZE; ++i){
+    cs_reading_buffer_[i] = analogRead(A0) *CS_SCALE_R;
+  }
+  cs_value_[3] = SimpleMedianFilter(cs_reading_buffer_,SENSOR_BUFFER_SIZE);
+  
+  for(uint16_t i = 0; i < SENSOR_BUFFER_SIZE; ++i){
+    cs_reading_buffer_[i] = analogRead(A1) *CS_SCALE_R;
+  }
+  cs_value_[4] = SimpleMedianFilter(cs_reading_buffer_,SENSOR_BUFFER_SIZE);
+  
+  for(uint16_t i = 0; i < SENSOR_BUFFER_SIZE; ++i){
+    cs_reading_buffer_[i] = analogRead(A2) *CS_SCALE_R;
+  }
+  cs_value_[5] = SimpleMedianFilter(cs_reading_buffer_,SENSOR_BUFFER_SIZE);
+  
+  for(uint16_t i = 0; i<6; ++i ){
+    if(cs_value_[i] >= 300) cs_value_[i] = 300;
+    if(cs_value_[i] < 0) cs_value_[i] = 0;
+    cs_value_[i] = (uint16_t)map(cs_value_[i],0,300,0,254);
+  }
+  */
+}
+
+/*
+ Read battery voltage
+ */
+bool GetVoltage(){
+  if(low_battery_flag_) return false;
+  float bat = analogRead(A6) * (2.50/1024.0);
+  bat = bat * 2.47/0.47 *10;
+  bat = round(bat);
+  battery_value_ = (uint8_t)bat;
+  
+  if(bat <= BATTERY_LIMIT && bat >= (BATTERY_LIMIT-50) && !low_battery_flag_){
+    low_battery_flag_ = true;
+    return false; //Low battery
+  }
+  else return true;
+}
+
+void UpdateSensors(){
+  //IR Sensor
+  GetIRSensor();
+  
+  //Color Sensor	
+  //GetColorSensor();
+
+  //Ultrasonic Sensor
+  GetAllUltrasonics();
+
+  //Compass
+  GetCompass();
+}
+
+void SetSpeedPWM(int speed1, int speed2){
+  if( speed1 < 0 ){
+    digitalWrite(PIN_MT1_IN2, LOW);
+    analogWrite(PIN_MT1_IN1, abs(speed1));  //Set motor direction, 1 low, 2 high
+  }
+  else if( speed1 > 0 ){
+    digitalWrite(PIN_MT1_IN1, LOW);
+    analogWrite(PIN_MT1_IN2, abs(speed1));  //Set motor direction, 1 low, 2 high
+  }
+  else if( speed1 == 0 ){ 
+    digitalWrite(PIN_MT1_IN1, LOW);    
+    digitalWrite(PIN_MT1_IN2, LOW);	 //Set motor direction, 1 low, 2 high
+  }
+
+  if( speed2 > 0 ){
+    digitalWrite(PIN_MT2_IN2, LOW);
+    //analogWrite(PIN_MT2_IN1, 80);
+    analogWrite(PIN_MT2_IN1, abs(speed2));  //Set motor direction, 1 low, 2 high
+  }
+  else if( speed2 < 0 ){
+    digitalWrite(PIN_MT2_IN1, LOW);
+    analogWrite(PIN_MT2_IN2, abs(speed2));  //Set motor direction, 1 low, 2 high
+  }
+  else if( speed2 == 0 ){ 
+    digitalWrite(PIN_MT2_IN1, LOW);    //Set motor direction, 1 low, 2 high
+    digitalWrite(PIN_MT2_IN2, LOW);
+  }
+}
+
+void MoveBase(float vx, float vy, float vth){
+  float pwm_left = 0;
+  float pwm_right = 0; 
+  pwm_left +=  MapFloat(vx,-0.5,0.5,-255.0,255.0);
+  pwm_right += MapFloat(vx,-0.5,0.5,-255.0,255.0);
+  pwm_left -=  MapFloat(vth,-1.0,1.0,-255,255);
+  pwm_right += MapFloat(vth,-1.0,1.0,-255,255);
+  
+  int16_t pwm_left_value = (int16_t)pwm_left;
+  int16_t pwm_right_value = (int16_t)pwm_right;
+  pwm_left_value = max(pwm_left_value, -255 );
+  pwm_left_value = min(pwm_left_value, 255 );
+  pwm_right_value = max(pwm_right_value, -255 );
+  pwm_right_value = min(pwm_right_value, 255 );
+  //Serial.println(pwm_left_value);
+  //Serial.println(pwm_right_value);
+  //Serial.println("--------"); 
+  SetSpeedPWM(pwm_left_value, pwm_right_value);
+}
+
+// ----------------------- LED -------------------------- //
+
+/*
+ Turn on LED
+ Param: ledID(1,2,-1(all led))
+ */
+void TurnOnLED(int ledID)
+{
+  switch(ledID){
+  case 1:
+    digitalWrite(PIN_LED1,HIGH);
+    break;
+
+  case 2:
+    digitalWrite(PIN_LED2,HIGH);
+    break;
+
+  case 4:
+    digitalWrite(PIN_LED4,LOW);
+    break;
+
+  case 5:
+    digitalWrite(PIN_LED5,LOW);
+    break;
+
+  case 6:
+    digitalWrite(PIN_ULED1,HIGH);
+    break;
+
+  case 7:
+    digitalWrite(PIN_ULED2,HIGH);
+    break;
+
+  case 8:
+    digitalWrite(PIN_ULED3,HIGH);
+    break;
+
+  case 9:
+    digitalWrite(PIN_ULED4,HIGH);
+    break;
+
+  case -1:
+    digitalWrite(PIN_LED1,HIGH);
+    digitalWrite(PIN_LED2,HIGH);
+    digitalWrite(PIN_LED4,LOW);
+    digitalWrite(PIN_LED5,LOW);
+    digitalWrite(PIN_ULED1,HIGH);
+    digitalWrite(PIN_ULED2,HIGH);
+    digitalWrite(PIN_ULED3,HIGH);
+    digitalWrite(PIN_ULED4,HIGH);
+    break;
+
+  default:
+    break;
+  }
+}
+
+
+
+/*
+
+ Turn off LED
+ 
+ Param: ledID(1,2,-1(all led))
+ 
+ */
+void TurnOffLED(int ledID){
+  switch(ledID){
+  case 1:
+    digitalWrite(PIN_LED1,LOW);
+    break;
+
+  case 2:
+    digitalWrite(PIN_LED2,LOW);
+    break;
+
+  case 4:
+    digitalWrite(PIN_LED4,HIGH);
+    break;
+
+  case 5:
+    digitalWrite(PIN_LED5,HIGH);
+    break;
+
+  case 6:
+    digitalWrite(PIN_ULED1,LOW);
+    break;
+
+  case 7:
+    digitalWrite(PIN_ULED2,LOW);
+    break;
+
+  case 8:
+    digitalWrite(PIN_ULED3,LOW);
+    break;
+
+  case 9:
+    digitalWrite(PIN_ULED4,LOW);
+    break;
+
+  case -1:
+    digitalWrite(PIN_LED1,LOW);
+    digitalWrite(PIN_LED2,LOW);
+    digitalWrite(PIN_LED4,HIGH);
+
+    digitalWrite(PIN_LED5,HIGH);
+
+    digitalWrite(PIN_ULED1,LOW);
+
+    digitalWrite(PIN_ULED2,LOW);
+
+    digitalWrite(PIN_ULED3,LOW);
+
+    digitalWrite(PIN_ULED4,LOW);
+
+    break;
+
+  default:
+
+    break;
+
+  }
+
+}
+
+
+
+/*
+
+ Toggle LED
+ 
+ Param: ledID(1,2,-1(Toggle all led))
+ 
+ */
+void ToggleLED(int ledID, int feq = 2)
+{
+  switch(ledID)
+  {
+  case 1:
+    if(LED_1_Count%feq  == 0) 
+      TurnOnLED(ledID);
+    else
+      TurnOffLED(ledID);
+    LED_1_Count++;
+    break;
+
+  case 2:
+    if(LED_2_Count%feq == 0) 
+      TurnOnLED(ledID);
+    else
+      TurnOffLED(ledID);
+    LED_2_Count++;
+    break;
+
+  case 4:
+    if(LED_4_Count%feq == 0) 
+      TurnOnLED(ledID);
+    else
+      TurnOffLED(ledID);
+    LED_4_Count++;
+    break;
+
+  case 5:
+    if(LED_5_Count%feq  == 0) 
+      TurnOnLED(ledID);
+    else
+      TurnOffLED(ledID); 
+    LED_5_Count++;
+    break;
+
+  case 6:
+    if(ULED_1_Count%feq  == 0) 
+
+      TurnOnLED(ledID);
+
+    else
+
+        TurnOffLED(ledID);
+
+    ULED_1_Count++;
+
+    break;
+
+  case 7:
+
+    if(ULED_2_Count%feq  == 0) 
+
+      TurnOnLED(ledID);
+
+    else
+
+        TurnOffLED(ledID);
+
+    ULED_2_Count++;
+
+    break;
+
+  case 8:
+    if(ULED_3_Count%feq  == 0) 
+      TurnOnLED(ledID);
+    else
+      TurnOffLED(ledID);
+    ULED_3_Count++;
+    break;
+
+  case 9:
+    if(ULED_4_Count%feq  == 0) 
+      TurnOnLED(ledID);
+    else
+      TurnOffLED(ledID);
+    ULED_4_Count++;
+    break;
+
+  case -1:
+    if(LED_1_Count%feq  == 0) 
+      TurnOnLED(-1);
+    else
+      TurnOffLED(-1);
+    LED_1_Count++;
+    break;
+
+  default:
+    break;
+
+  }
+}
+
+
+
+/*
+
+ Blink LED
+ 
+ Param: ledID(1,2,-1(Blink all led))
+ 
+ time: the time of blink
+ 
+ */
+
+void BlinkLED(int ledID,int times)
+
+{
+
+  for(int i = 0; i < times; i++)
+
+  {
+
+    TurnOnLED(ledID);
+
+    delay(50);
+
+    TurnOffLED(ledID);
+
+    delay(50);
+
+  }
+
+  TurnOffLED(ledID);
+}
+
+void GeneratePack(int val, char& pos_l, char& pos_h){
+  if(val<0) val =0;
+  if(val>=4096) val = 4095;
+  pos_l = (char)(val%64 + '0');
+  pos_h = (char)(val/64 + '0');
+}
+
+void PublishSensors(){
+  //line sensors
+  char msg[40] = {0};
+  int16_t checksum = 0;
+  uint8_t pack_start = 0;
+  for(uint8_t i = 0, j = 0; i < 6; ++i){
+    GeneratePack(ir_value_[i],msg[j+pack_start], msg[j+1+pack_start]);
+    checksum += ir_value_[i];
+    j+=2;
+  }
+  pack_start = 12;
+  for(uint8_t i = 0, j = 0; i < 6; ++i){
+    GeneratePack(cs_value_[i],msg[j+pack_start], msg[j+1+pack_start]);
+    checksum += cs_value_[i];
+    j+=2;
+  }
+  
+  GeneratePack(dist_value_[0],msg[24], msg[25]);
+  checksum += dist_value_[0];
+  GeneratePack(dist_value_[1],msg[26], msg[27]);
+  checksum += dist_value_[1];
+  GeneratePack(dist_value_[2],msg[28], msg[29]);
+  checksum += dist_value_[2];
+  
+  GeneratePack(0,msg[30], msg[31]);
+  checksum += 0;
+  GeneratePack(0,msg[32], msg[33]);
+  checksum += 0;
+  GeneratePack(compass_value_,msg[34], msg[35]);
+  checksum += compass_value_;
+  GeneratePack(battery_value_,msg[36], msg[37]);
+  checksum += battery_value_;
+  //Serial.println(checksum); 
+  checksum = 255-(checksum%256);
+  //Serial.println(checksum); 
+  msg[38] = (char)checksum;
+  
+  //Serial.println(msg);
+  msg_.data = msg;
+  //Serial.println(battery_value_);
+  pub_.publish(&msg_);
+}
+
+/* Timer */
+void Time3Init(uint16_t freq){
+  //Disable all interrupts
+  noInterrupts();
+  TCCR3A = 0;
+  TCCR3B = 0;
+  TCNT3 = 0;
+  //Set up compare match register 16MHz/256/2Hz
+  OCR3A = 16000000/256/freq;
+  //Set up CTC mode
+  TCCR3B |= (1<<WGM32);
+  //Set up 256 prescaler
+  TCCR3B |= (1<<CS32);
+  //Enable timer compare interrupt
+  TIMSK3 |= (1<<OCIE3A);
+  //Enable all interrupts
+  interrupts();
+}
+
+void Time4Init(uint16_t freq){
+  //Disable all interrupts
+  noInterrupts();
+  TCCR4A = 0;
+  TCCR4B = 0;
+  TCNT4 = 0;
+  //Set up compare match register 16MHz/256/2Hz
+  OCR4A = 16000000/256/freq;
+  //Set up CTC mode
+  TCCR4B |= (1<<WGM42);
+  //Set up 256 prescaler
+  TCCR4B |= (1<<CS42);
+  //Enable timer compare interrupt
+  TIMSK4 |= (1<<OCIE4A);
+  //Enable all interrupts
+  interrupts();
+}
+
+void Time5Init(uint16_t freq){
+  //Disable all interrupts
+  noInterrupts();
+  TCCR5A = 0;
+  TCCR5B = 0;
+  TCNT5 = 0;
+  //Set up compare match register 16MHz/256/2Hz
+  OCR5A = 16000000/256/freq;
+  //Set up CTC mode
+  TCCR5B |= (1<<WGM52);
+  //Set up 256 prescaler
+  TCCR5B |= (1<<CS52);
+  //Enable timer compare interrupt
+  TIMSK5 |= (1<<OCIE5A);
+  //Enable all interrupts
+  interrupts();
+}
+
+ISR(TIMER3_COMPA_vect){
+  digitalWrite(PIN_LED4, digitalRead(PIN_LED4)^1);
+}
+
+ISR(TIMER4_COMPA_vect){
+  digitalWrite(PIN_LED4, digitalRead(PIN_LED4)^1);
+  nh_.spinOnce();
+  
+}
+
+ISR(TIMER5_COMPA_vect){
+  digitalWrite(PIN_LED4, digitalRead(PIN_LED4)^1);
+}
+
+void setup(){
+  //Serial.begin(57600);
+  //Motor Pin configuration
+  pinMode(PIN_MT1_IN1, OUTPUT); 
+  pinMode(PIN_MT1_IN2, OUTPUT);
+  pinMode(PIN_MT2_IN1, OUTPUT);
+  pinMode(PIN_MT2_IN2, OUTPUT);
+
+  //Compass 
+  Wire.begin(); //conects I2C
+
+  analogReference(EXTERNAL);
+  //analogReference(INTERNAL2V56); 
+
+  //PushBtn
+  pinMode(PIN_BTN1, INPUT);
+  pinMode(PIN_BTN2, INPUT);
+  pinMode(PIN_BTN3, INPUT);
+
+  //LED for system
+  pinMode(PIN_LED1, OUTPUT);
+  pinMode(PIN_LED2, OUTPUT);
+  pinMode(PIN_LED4, OUTPUT);
+  pinMode(PIN_LED5, OUTPUT);
+
+  //LED for user
+  pinMode(PIN_ULED1, OUTPUT);
+  pinMode(PIN_ULED2, OUTPUT);
+  pinMode(PIN_ULED3, OUTPUT);
+  pinMode(PIN_ULED4, OUTPUT);
+  
+  MoveBase(0,0,0);
+  us_filter_0_.initalize(US_MAX_DISTANCE);
+  us_filter_1_.initalize(US_MAX_DISTANCE);
+  us_filter_2_.initalize(US_MAX_DISTANCE);
+  
+  adc_filter_0_.initalize(0);
+  adc_filter_1_.initalize(0);
+  adc_filter_2_.initalize(0);
+  adc_filter_3_.initalize(0);
+  adc_filter_4_.initalize(0);
+  adc_filter_5_.initalize(0);
+  
+  cmp_filter_.initalize(0);
+  
+  // make the calibration take about 10 seconds 
+  for (int i = 0; i < 200; i++){
+    // reads all sensors 10 times at 2.5 ms per six sensors (i.e. ~25 ms per call)
+    qtra.calibrate(); 
+  }
+  BlinkLED(-1,10);
+  TurnOffLED(-1);
+  
+  //ros initize
+  nh_.initNode();
+  nh_.advertise(pub_);
+  nh_.subscribe(sub_vel_);
+  nh_.subscribe(sub_led_);
+    
+  //Time3Init(50);
+  Time4Init(50);
+  //Time5Init(1);
+}
+
+void test(){
+  MoveBase(0.1,0,0);
+  delay(5000);
+  MoveBase(-0.1,0,0);
+  delay(5000);
+  MoveBase(0.0,0,0.1);
+  delay(5000);
+  MoveBase(0.0,0,-0.1);
+  delay(5000);
+  MoveBase(0.0,0,0.0);
+  delay(5000);
+}
+
+void loop(){
+  digitalWrite(PIN_LED5, digitalRead(PIN_LED5)^1);
+  UpdateSensors();
+  PublishSensors();
+  delay(50);
+}

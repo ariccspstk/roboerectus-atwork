@@ -1,0 +1,127 @@
+#include "aricc_2d_vision/shapematch.h"
+
+namespace aricc_2d_vision{
+
+  void ShapeMatch::onInit(){
+    ConnectionBasedNodelet::onInit();
+    pnh_->param("approximate_sync", approximate_sync_, false);
+    pnh_->param("debug", debug_, false);
+    pnh_->param("detect_color", detect_color_, false);
+    pnh_->param("detect_density", detect_density_, false);
+    pnh_->param("z", z_, 1.0);
+    srv_ = boost::make_shared <dynamic_reconfigure::Server<Config> > (*pnh_);
+    dynamic_reconfigure::Server<Config>::CallbackType f =
+      boost::bind (
+        &ShapeMatch::configCallback, this, _1, _2);
+    srv_->setCallback (f);
+    if(debug_){
+      pub_debug_image_ = advertise<sensor_msgs::Image>(*pnh_, "debug", 1);
+    }
+    pub_rects_ = advertise<aricc_vision_msgs::RotatedRectArray>(*pnh_, "output/rects", 1);
+    pub_rects_p_ = advertise<aricc_vision_msgs::RotatedRectArray>(*pnh_, "output/projected_rects", 1);
+  }
+
+  void ShapeMatch::subscribe(){
+    sub_contour_.subscribe(*pnh_,"input/contour", 1);
+    sub_rgb_image_.subscribe(*pnh_,"input/rgb_image", 1);
+    sub_threshold_image_.subscribe(*pnh_,"input/threshold_image", 1);
+    sub_image_info_.subscribe(*pnh_,"input/image_info", 1);
+    if (approximate_sync_) {
+      async_ = boost::make_shared<message_filters::Synchronizer<ApproxSyncPolicy> >(100);
+      async_->connectInput(sub_contour_, sub_rgb_image_, sub_threshold_image_, sub_image_info_);
+      async_->registerCallback(boost::bind(&ShapeMatch::execute, this, _1, _2, _3, _4));
+    }
+    else {
+      sync_ = boost::make_shared<message_filters::Synchronizer<SyncPolicy> >(100);
+      sync_->connectInput(sub_contour_, sub_rgb_image_, sub_threshold_image_,sub_image_info_);
+      sync_->registerCallback(boost::bind(&ShapeMatch::execute, this, _1, _2, _3, _4));
+    }
+  }
+
+  void ShapeMatch::unsubscribe(){
+    sub_contour_.unsubscribe();
+    sub_image_info_.unsubscribe();
+    sub_rgb_image_.unsubscribe();
+    sub_threshold_image_.unsubscribe();
+  }
+  
+  void ShapeMatch::configCallback(
+    Config &config, uint32_t level){
+ntours(m20);
+
+	  boost::mutex::scoped_lock lock(mutex_);
+    debug_ = config.debug;
+    result_= config.result;
+    ruler_ = config.ruler;
+    z_     = config.z;
+  }
+  
+  void ShapeMatch::pubDebug( cv::Mat& src, std_msgs::Header header ){
+      if(result_) drawResult(src);
+      if(ruler_) drawRuler(src);
+      pub_debug_image_.publish(cv_bridge::CvImage(
+                               header,
+                               sensor_msgs::image_encodings::BGR8,
+                               src).toImageMsg());
+      /*
+      pub_debug_image_.publish(cv_bridge::CvImage(
+                               header,
+                               sensor_msgs::image_encodings::MONO8,
+                               src).toImageMsg());*/
+  }
+
+ void ShapeMatch::ShapeMatch(std::vector<cv::Point> contour, ){
+
+     double scoreInputContour[reference_list.size()];
+         
+     std::vector<std::vector<cv::Point> > RefContour;
+     RefContour = getContours(cv::imread("/home/aricc/asad_img/F20_20_B.png"));
+    
+     for (i = 0, i < reference_list.size(); i++)
+     {
+         scoreInputContour[i] = cv::matchShapes(rf.contours[i], inputContour, 1, 0.0);
+         if (scoreInputContour[i] < 1.2 && scoreInputContour[i] !=0)
+         {
+             //returns score and name of matched contours?
+         }
+     }
+} 
+
+  bool loadReferences(){
+    reference_list_.clear();
+    //Load reference images from config files
+    ROS_INFO("----------");
+    ROS_INFO("Loading references ...");
+    XmlRpc::XmlRpcValue reference_list/*rmb to declare a vector(?) called reference_list. follow the load objects example*/;
+
+    if(/* if loaded refs */pnh_.getParam("image_references", reference_list))
+    {
+	//iterate through the ref imgs and get contours
+
+	//std::vector<std::vector<cv::Point> > refContour;
+
+      ROS_INFO("Found reference list, size:%d",reference_list.size()); //reference_list.size (declare??)
+      ROS_ASSERT(reference_list.getType() == XmlRpc::XmlRpcValue::TypeArray);
+      if( reference_list.getType() == XmlRpc::XmlRpcValue::TypeArray ){
+        for( size_t i = 0; i < reference_list.size(); ++i){
+          std::string name = std::string(reference_list[i]["name"]);
+          std::string file = std::string(reference_list[i]["file"]);
+          Reference rf; //struct Table (rmb to declare a struct Reference w/ content contours)
+          //check what to put in the parenthesis part of the opencv findContours function
+          rf.contours[i] = cv::findContours(input, contours_, hierarchy_, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, cv::Point(0, 0));
+          reference_list_.push_back(rf);
+        }
+        ROS_INFO("Loaded %lu references",reference_list_.size());
+        return true;
+      }
+
+
+    }
+    else ROS_ERROR("Couldn`t load references");
+    ROS_INFO("----------");
+    return false;
+  }
+
+
+
+

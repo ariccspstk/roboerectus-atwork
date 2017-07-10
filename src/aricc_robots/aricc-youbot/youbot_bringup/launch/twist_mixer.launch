@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<launch>
+  <node pkg="aricc_twist_mux" type="aricc_twist_mux" name="aricc_twist_mux" output="screen" >
+    <rosparam file="$(find youbot_bringup)/config/twist_mux.yaml" command="load" />
+    <remap from="cmd_vel_mux" to="cmd_vel"/>
+  </node>
+  
+   <!--node pkg="aricc_lowpass_controller" type="aricc_lowpass_controller" name="aricc_lowpass_controller" output="screen">
+    <param name="rate" value="50.0"  type="double" />
+    <param name="t"    value="0.2"   type="double" />
+    <param name="dt"   value="0.1"   type="double" />
+    <param name="eps"  value="0.01" type="double" />
+    <param name="pub_topic" value="cmd_vel" type="string" />
+    <param name="sub_topic" value="cmd_vel_mux" type="string" />
+   </node-->
+</launch>
+

@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>CSBOT</title>
+<meta charset="utf-8" />
+
+<link rel="stylesheet" type="text/css" href="javascript/libs/jquery-ui.css" />
+
+<script type="text/javascript" src="javascript/libs/jquery.min.js"></script>
+<script type="text/javascript" src="javascript/libs/jquery-ui.min.js"></script>
+
+<script type="text/javascript" src="javascript/libs/eventemitter2.min.js"></script>
+<script type="text/javascript" src="javascript/libs/mjpegcanvas.min.js"></script>
+<script type="text/javascript" src="javascript/libs/roslib.min.js"></script>
+<script type="text/javascript" src="javascript/libs/keyboardteleop.min.js"></script>
+
+<style type="text/css">
+	div { 
+    	margin:0 auto;
+        text-align: center}
+
+	hr { 
+    	display: block;
+    	margin-top: 0.5em;
+    	margin-bottom: 0.5em;
+    	margin-left: auto;
+    	margin-right: auto;
+    	border-style: inset;
+    	border-width: 2px;}
+</style>
+
+<script type="text/javascript" type="text/javascript">
+  /**
+   * Setup all ROS elements when the page is loaded. 
+   */
+  function init() {
+    // Connecting to ROS
+    var ros = new ROSLIB.Ros({
+      url : 'ws://localhost:9090'
+    });
+    ros.on('connection', function() {
+      document.getElementById('connecting').style.display = 'none';
+      document.getElementById('error').style.display = 'none';
+      document.getElementById('closed').style.display = 'none';
+      document.getElementById('connected').style.display = 'inline';
+      console.log('Connected to websocket server.');
+    });
+    ros.on('error', function(error) {
+      document.getElementById('connecting').style.display = 'none';
+      document.getElementById('connected').style.display = 'none';
+      document.getElementById('closed').style.display = 'none';
+      document.getElementById('error').style.display = 'inline';
+      console.log('Error connecting to websocket server: ', error);
+    });
+    ros.on('close', function() {
+      document.getElementById('connecting').style.display = 'none';
+      document.getElementById('connected').style.display = 'none';
+      document.getElementById('closed').style.display = 'inline';
+      console.log('Connection to websocket server closed.');
+    });
+    // Create the main viewer.
+    var viewer = new MJPEGCANVAS.Viewer({
+      divID : 'mjpeg',
+      host : 'localhost',
+      width : 640,
+      height : 480,
+      quality: 30,
+      topic : '/camera1/image_raw'
+    });
+    // Initialize the teleop.
+    var teleop = new KEYBOARDTELEOP.Teleop({
+      ros : ros,
+      topic : '/cmd_vel'
+    });
+
+    // Create a UI slider using JQuery UI.
+    $('#speed-slider').slider({
+      range : 'min',
+      min : 0,
+      max : 100,
+      value : 90,
+      slide : function(event, ui) {
+        // Change the speed label.
+        $('#speed-label').html('Speed: ' + ui.value + '%');
+        // Scale the speed.
+        teleop.scale = (ui.value / 100.0);
+      }
+    });
+
+    // Set the initial speed .
+    $('#speed-label').html('Speed: ' + ($('#speed-slider').slider('value')) + '%');
+    teleop.scale = ($('#speed-slider').slider('value') / 100.0);
+  
+    // Subscribing
+    var sub_us_l_ = new ROSLIB.Topic({
+      ros : ros,
+      name : 'left_us',
+      messageType : 'std_msgs/UInt16'
+    });
+    sub_us_l_.subscribe(function(message) {
+      console.log('Received message on ' + sub_us_l_.name);
+      document.getElementById("us_left").innerHTML = message.data;
+      //sub_us_l_.unsubscribe();
+    });
+
+    var sub_us_c_ = new ROSLIB.Topic({
+      ros : ros,
+      name : 'centre_us',
+      messageType : 'std_msgs/UInt16'
+    });
+    sub_us_c_.subscribe(function(message) {
+      console.log('Received message on ' + sub_us_c_.name);
+      document.getElementById("us_centre").innerHTML = message.data;
+      //sub_us_c_.unsubscribe();
+    });
+
+    var sub_us_r_ = new ROSLIB.Topic({
+      ros : ros,
+      name : 'right_us',
+      messageType : 'std_msgs/UInt16'
+    });
+    sub_us_r_.subscribe(function(message) {
+      console.log('Received message on ' + sub_us_r_.name);
+      document.getElementById("us_right").innerHTML = message.data;
+      //sub_us_r_.unsubscribe();
+    });
+
+    var sub_color_sensors = new ROSLIB.Topic({
+      ros : ros,
+      name : 'color_sensors',
+      messageType : 'rosserial_arduino/Adc'
+    });
+    sub_color_sensors.subscribe(function(message) {
+      console.log('Received message on ' + sub_color_sensors.name);
+      document.getElementById("cs_0").innerHTML = message.adc0;
+      document.getElementById("cs_1").innerHTML = message.adc1;
+      document.getElementById("cs_2").innerHTML = message.adc2;
+      document.getElementById("cs_3").innerHTML = message.adc3;
+      document.getElementById("cs_4").innerHTML = message.adc4;
+      document.getElementById("cs_5").innerHTML = message.adc5;
+      //sub_color_sensors.unsubscribe();
+    });
+
+    var sub_line_sensors = new ROSLIB.Topic({
+      ros : ros,
+      name : 'line_sensors',
+      messageType : 'rosserial_arduino/Adc'
+    });
+    sub_line_sensors.subscribe(function(message) {
+      console.log('Received message on ' + sub_line_sensors.name);
+      document.getElementById("line_0").innerHTML = message.adc0;
+      document.getElementById("line_1").innerHTML = message.adc1;
+      document.getElementById("line_2").innerHTML = message.adc2;
+      document.getElementById("line_3").innerHTML = message.adc3;
+      document.getElementById("line_4").innerHTML = message.adc4;
+      document.getElementById("line_5").innerHTML = message.adc5;
+      //sub_line_sensors.unsubscribe();
+    });
+
+    var sub_odom = new ROSLIB.Topic({
+      ros : ros,
+      name : 'odom',
+      messageType : 'geometry_msgs/Pose2D'
+    });
+    sub_odom.subscribe(function(message) {
+      console.log('Received message on ' + sub_odom.name);
+      document.getElementById("pose_x").innerHTML = message.x;
+      document.getElementById("pose_y").innerHTML = message.y;
+      document.getElementById("pose_th").innerHTML = message.theta;
+      //sub_odom.unsubscribe();
+    });
+
+    var sub_voltage = new ROSLIB.Topic({
+      ros : ros,
+      name : 'voltage',
+      messageType : 'std_msgs/UInt8'
+    });
+    sub_voltage.subscribe(function(message) {
+    console.log('Received message on ' + sub_voltage.name);
+      document.getElementById("voltage").innerHTML = message.data/10.0;
+      //sub_voltage.unsubscribe();
+    });
+
+    var sub_robot_id = new ROSLIB.Topic({
+      ros : ros,
+      name : 'robot_id',
+      messageType : 'std_msgs/UInt8'
+    });
+    sub_robot_id.subscribe(function(message) {
+      console.log('Received message on ' + sub_robot_id.name);
+      document.getElementById("robot_id").innerHTML = message.data;
+      //sub_robot_id.unsubscribe();
+    });
+  }
+</script>
+</head>
+
+<body onload="init()">
+  <h1 align="center">CSBOT WEB INTERFACE</h1>
+  <hr>
+  <div id="mjpeg",align="center"></div>
+  <hr>
+  <h2 align="center">SENSOR FEEDBACK</h1>
+  <table align="center",>
+    <tr>
+      <td>ROBOT ID:</td>
+      <td>[</td>
+      <td id="robot_id"></td>
+      <td>]</td>
+    </tr>
+  </table>
+  <table align="center",>
+    <tr>
+      <td>POSE(X,Y,TH):</td>
+      <td>[</td>
+      <td id="pose_x"></td>
+      <td>,</td>
+      <td id="pose_y"></td>
+      <td>,</td>
+      <td id="pose_th"></td>
+      <td>]</td>
+    </tr>
+  </table>
+
+  <table align="center",>
+    <tr>
+      <td>ULTASONIC(L,C,R):</td>
+      <td>[</td>
+      <td id="us_left"></td>
+      <td>,</td>
+      <td id="us_centre"></td>
+      <td>,</td>
+      <td id="us_right"></td>
+      <td>]</td>
+    </tr>
+  </table>
+  
+   <table align="center",>
+    <tr>
+      <td>LINE SENSOR:</td>
+      <td>[</td>
+      <td id="line_0"></td>
+      <td>,</td>
+      <td id="line_1"></td>
+      <td>,</td>
+      <td id="line_2"></td>
+      <td>,</td>
+      <td id="line_3"></td>
+      <td>,</td>
+      <td id="line_4"></td>
+      <td>,</td>
+      <td id="line_5"></td>
+      <td>]</td>
+    </tr>
+  </table>
+
+  <table align="center",>
+    <tr>
+      <td>COLOR SENSOR:</td>
+      <td>[</td>
+      <td id="cs_0"></td>
+      <td>,</td>
+      <td id="cs_1"></td>
+      <td>,</td>
+      <td id="cs_2"></td>
+      <td>,</td>
+      <td id="cs_3"></td>
+      <td>,</td>
+      <td id="cs_4"></td>
+      <td>,</td>
+      <td id="cs_5"></td>
+      <td>]</td>
+    </tr>
+  </table>
+
+  <table align="center",>
+    <tr>
+      <td>BATTERY:</td>
+      <td>[</td>
+      <td id="voltage"></td>
+      <td>]</td>
+    </tr>
+  </table>
+  <hr>
+  <h2 align="center">MOTION CONTROL</h1>
+  <div id="speed-label"></div>
+  <div id="speed-slider"></div>
+<hr>
+  <div id="statusIndicator">
+    <p id="connecting">
+      Connecting to rosbridge...
+    </p>
+    <p id="connected" style="color:#00D600; display:none">
+      Connected
+    </p>
+    <p id="error" style="color:#FF0000; display:none">
+      Error in the backend!
+    </p>
+    <p id="closed" style="display:none">
+      Connection closed.
+    </p>
+  </div>
+</body>
+</html>
+
+

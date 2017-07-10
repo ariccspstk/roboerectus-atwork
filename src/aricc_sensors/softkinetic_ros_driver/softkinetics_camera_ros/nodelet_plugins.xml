@@ -1,0 +1,9 @@
+<library path="libsoftkinetics_ros_nodelet">
+
+  <class name="softkinetics_ros_nodelet/SoftKineticsCamera" type="softkinetics_ros_nodelet::SoftKineticsCamera" base_class_type="nodelet::Nodelet">
+  <description>
+  The camera driver of softkinetic   
+  </description>
+  </class>
+
+</library>

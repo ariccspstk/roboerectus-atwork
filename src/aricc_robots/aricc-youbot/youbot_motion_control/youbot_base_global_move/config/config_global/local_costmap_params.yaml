@@ -1,0 +1,16 @@
+#Independent settings for the local costmap
+local_costmap:
+    publish_voxel_map: true
+    global_frame: odom
+    robot_base_frame: base_footprint
+    update_frequency: 5.0
+    publish_frequency: 5.0
+    static_map: false
+    rolling_window: true
+    
+    # Setting the "rolling_window" parameter to true means that the costmap will remain centered around the robot as the robot moves through the world. The "width," "height," and "resolution" parameters set the width (meters), height (meters), and resolution (meters/cell) of the costmap. Note that its fine for the resolution of this grid to be different than the resolution of your static map, but most of the time we tend to set them equally. 
+    width: 4.0
+    height: 4.0
+    resolution: 0.01
+    origin_x: 0.0
+    origin_y: 0.0

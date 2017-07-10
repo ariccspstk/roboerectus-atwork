@@ -1,0 +1,1134 @@
+#include <ros/ros.h>
+#include <dynamic_reconfigure/server.h>
+#include <actionlib/server/simple_action_server.h>
+#include <actionlib/client/simple_action_client.h>
+
+#include <youbot_load_object/LoadAction.h>
+//#include <youbot_load_object/ServerConfig.h>
+
+#include <youbot_base_local_move/BaseAction.h>
+#include <youbot_arm_joints/JointAction.h>
+#include <youbot_arm_ik/IkAction.h>
+
+#include <geometry_msgs/Pose2D.h>
+#include <sensor_msgs/LaserScan.h>
+#include <nav_msgs/Odometry.h>
+#include <tf/transform_broadcaster.h>
+#include <tf_conversions/tf_eigen.h>
+#include <aricc_utils/geometry_utils.h>
+#include <aricc_vision_msgs/Object.h>
+#include <aricc_vision_msgs/ObjectArray.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string>
+#include <utility>
+#include <iostream>
+#include <assert.h>
+#include <algorithm>    // std::sort
+
+bool objectSort(aricc_vision_msgs::Object i, aricc_vision_msgs::Object j){
+  return ( fabs(i.position.y) < fabs(j.position.y) );
+}
+enum TaskEnum {   kArmLookTable = 10,      
+                  kBaseMoveLeft, 
+                  kMoveFindObject,         
+                  kStopBase,
+                  kStaticFindObject,       
+                  kBaseAlignObject,
+                  kStaticFindObjectBeforeGrasp,
+                  kCheckArmIkBeforeGrasp,
+                  kOpenGripperBeforeGrasp, 
+                  kArmReadyBeforeGrasp,
+                  kArmGoDownBeforeGrasp,   
+                  kCloseGripperGrasp,
+                  kArmGoUpAfterGrasp,      
+                  kArmReadyAfterGrasp,
+                  kArmReadyBeforeLoad,     
+                  kArmLoad,
+                  kArmReadyBeforeLoadCenter,
+                  kArmReadyAfterLoadCenter,
+                  kOpenGripperLoad,        
+                  kArmReadyAfterLoad,
+                  kArmStandby,             
+                  kFinishTask,
+                  kEmpty};
+
+struct Table{
+  double height;
+  double offset_x;
+  double offset_y;
+  double offset_z;
+  double object_detect_z;
+};
+
+class Task{
+public:
+  TaskEnum now;
+  TaskEnum last;
+  std::vector<std::string> items;
+  
+  Task(): now(kArmLookTable), last(kEmpty){
+  }
+  
+  ~Task(){}
+
+  std::string toString() const{
+    switch(now){
+      case kArmLookTable:           return "kArmLookTable";
+      case kBaseMoveLeft:           return "kBaseMoveLeft";
+      case kMoveFindObject:         return "kMoveFindObject";
+      case kStopBase:               return "kStopBase";
+      case kStaticFindObject:       return "kStaticFindObject";
+      case kBaseAlignObject:        return "kBaseAlignObject";
+      case kStaticFindObjectBeforeGrasp: return "kStaticFindObjectBeforeGrasp";
+      case kCheckArmIkBeforeGrasp:  return "kCheckArmIkBeforeGrasp";
+      case kOpenGripperBeforeGrasp: return "kOpenGripperBeforeGrasp";
+      case kArmReadyBeforeGrasp:    return "kArmReadyBeforeGrasp";
+      case kArmGoDownBeforeGrasp:   return "kArmGoDownBeforeGrasp";
+      case kCloseGripperGrasp:      return "kCloseGripperGrasp";
+      case kArmGoUpAfterGrasp:      return "kArmGoUpAfterGrasp";
+      case kArmReadyAfterGrasp:     return "kArmReadyAfterGrasp";
+      case kArmReadyBeforeLoad:     return "kArmReadyBeforeLoad";
+      case kArmReadyBeforeLoadCenter: return "kArmReadyBeforeLoadCenter";
+      case kArmReadyAfterLoadCenter:  return "kArmReadyAfterLoadCenter";
+      case kArmLoad:                return "kArmLoad";
+      case kOpenGripperLoad:        return "kOpenGripperLoad";
+      case kArmReadyAfterLoad:      return "kArmReadyAfterLoad";
+      case kArmStandby:             return "kArmStandby";
+      case kFinishTask:             return "kFinishTask";
+
+      default:
+        ROS_ERROR("BUG: Unhandled State: %u", now);
+        return "BUG-UNKNOWN";
+    }
+  }
+};
+
+class LoadAction{
+
+public:
+  typedef actionlib::SimpleActionClient<youbot_base_local_move::BaseAction> 
+    AcBase;
+  typedef actionlib::SimpleActionClient<youbot_arm_joints::JointAction> 
+    AcArmJoints;
+  typedef actionlib::SimpleActionClient<youbot_arm_ik::IkAction> 
+    AcArmIk;
+
+  //typedef youbot_load_object::ServerConfig Config;
+  enum StateEnum { ACTIVE = 0, SUCCEEDED, ABORTED };
+
+protected:
+  ros::NodeHandle nh_, pnh_, target_nh_;
+  actionlib::SimpleActionServer
+    <youbot_load_object::LoadAction> action_;
+  std::string action_name_;
+  ros::ServiceClient dynamic_reconfigure_service_;
+
+  //boost::shared_ptr<dynamic_reconfigure::Server<Config> > srv_;
+  boost::shared_ptr<AcArmJoints> client_arm_joints_;
+  boost::shared_ptr<AcArmIk>     client_arm_ik_;
+  boost::shared_ptr<AcBase>      client_base_;
+  
+  boost::mutex mutex_;
+  std::string object_topic_;
+  std::string odom_topic_;
+  std::string table_height_param_;
+  std::vector<std::string> tray_state_;
+  Task task_;
+  aricc_vision_msgs::Object best_object_;
+  size_t best_slot_;
+
+  bool is_arm_sent_goal_;
+  bool is_base_sent_goal_;
+  bool object_received_;
+  bool odom_received_;
+  bool is_new_goal_;
+
+  double rate_;
+  double timeout_;
+  double table_height_;
+  double dist_;
+  double dist_left_;
+  double offset_x_, offset_y_, offset_z_; 
+  double object_detect_z_; 
+  double offset_roll_;
+
+  unsigned int cnt_find_object_;
+  unsigned int cnt_arm_move_;
+  std::vector<aricc_vision_msgs::Object> detected_objects_;
+  std::vector<double> armJointsLookTable_; 
+  std::vector<double> armJointsTransport_; 
+  std::vector<double> armJointsStandby_; 
+  std::vector<double> armJointsReadyTrayLeft_; 
+  std::vector<double> armJointsReadyTrayCenter_; 
+  std::vector<double> armJointsReadyTrayRight_; 
+  std::vector<double> armJointsTrayLeft_; 
+  std::vector<double> armJointsTrayCenter_; 
+  std::vector<double> armJointsTrayRight_; 
+  std::vector<double> armJointsBeforeTrayCenter_; 
+  std::vector<double> gripperOpen_; 
+  std::vector<double> gripperClose_; 
+  
+  std::vector<Table> table_list_;
+  
+  youbot_load_object::LoadGoal goal_;
+  youbot_load_object::LoadFeedback feedback_;
+  youbot_load_object::LoadResult result_;
+ 
+  ros::Subscriber sub_odom_, sub_object_;
+  ros::Time time_now_, time_start_;
+  geometry_msgs::Pose2D odom_now_;
+  geometry_msgs::Pose2D odom_last_;
+  geometry_msgs::Pose2D odom_start_;
+  geometry_msgs::Pose2D odom_dist_; 
+ 
+public:
+  LoadAction(std::string name) :
+    pnh_("~"),is_arm_sent_goal_(false),is_base_sent_goal_(false),
+    object_received_(false),odom_received_(false),is_new_goal_(true),
+    cnt_find_object_(0),cnt_arm_move_(0),dist_(0),
+    offset_x_(0),offset_y_(0),offset_roll_(0),
+    action_(nh_, name, boost::bind(&LoadAction::executeCB, this, _1), false),
+    action_name_(name){
+  }
+
+  ~LoadAction(void){
+  }
+
+  bool loadTables(){
+    table_list_.clear();
+    //Loading tasks from config files
+    ROS_INFO("----------");
+    ROS_INFO("Loading tables ...");
+    XmlRpc::XmlRpcValue table_list;
+
+    if( pnh_.getParam("tables", table_list) ){
+      ROS_INFO("Found table list, size:%d",table_list.size());
+      ROS_ASSERT(table_list.getType() == XmlRpc::XmlRpcValue::TypeArray);
+      if( table_list.getType() == XmlRpc::XmlRpcValue::TypeArray ){
+        for( size_t i = 0; i < table_list.size(); ++i){
+          std::string height =
+          std::string(table_list[i]["height"]);
+          std::string offset_x =
+          std::string(table_list[i]["offset_x"]);
+          std::string offset_y =
+          std::string(table_list[i]["offset_y"]);
+          std::string offset_z =
+          std::string(table_list[i]["offset_z"]);
+          std::string object_detect_z =
+          std::string(table_list[i]["object_detect_z"]);
+          ROS_INFO("%s, %s, %s, %s, %s", height.c_str(),  
+            offset_x.c_str(), offset_y.c_str(),offset_z.c_str(), 
+            object_detect_z.c_str());
+          Table tb;
+          tb.height  = atof(height.c_str());
+          tb.offset_x   = atof(offset_x.c_str());
+          tb.offset_y   = atof(offset_y.c_str());
+          tb.offset_z   = atof(offset_z.c_str());
+          tb.object_detect_z = atof(object_detect_z.c_str());
+          table_list_.push_back(tb);
+        }
+        ROS_INFO("Loaded %lu tables",table_list_.size());
+        return true;
+      }
+    }
+    else ROS_ERROR("Couldn`t load tables");
+    ROS_INFO("----------");
+    return false;
+  }
+
+  bool initAction(){
+    ROS_INFO("----------");
+    //srv_ = boost::make_shared <dynamic_reconfigure::Server<Config> > (pnh_);
+    //dynamic_reconfigure::Server<Config>::CallbackType f =
+    //  boost::bind (&LoadAction::configCallback, this, _1, _2);
+    //srv_->setCallback(f);
+
+    pnh_.param<double>("rate",        rate_, 20.0);
+    pnh_.param<double>("scan_dist",   dist_, 0.06);
+    
+    pnh_.param<std::string>
+      ("object_topic", object_topic_, "detected_objects");
+    pnh_.param<std::string>
+      ("odom_topic", odom_topic_, "odom");
+    std::string object_detect_namespace;
+    pnh_.param("object_detect_namespace", object_detect_namespace, std::string("/youbot_object_detection/RotatedRectFinder/"));
+    pnh_.param("table_height_param", table_height_param_, std::string("z"));
+
+    target_nh_ = ros::NodeHandle(object_detect_namespace);
+    dynamic_reconfigure_service_ = target_nh_.serviceClient<dynamic_reconfigure::Reconfigure>("set_parameters", true);
+
+
+    if(!loadAllArmJoints()) return false;
+    if(!loadTables()) return false;
+
+    client_base_.reset(new AcBase("youbot_base_local_move_server", true));
+    client_arm_joints_.reset(new AcArmJoints("youbot_arm_joints_server", true));
+    client_arm_ik_.reset(new AcArmIk("youbot_arm_ik_server", true));
+
+    unsigned int cnt = 0;
+    while(!client_base_->waitForServer(ros::Duration(5.0))){
+      ROS_ERROR("waiting for youbot_base_local_move actionlib");
+      if(++cnt == 5) return false;
+    }
+    cnt = 0;
+    while(!client_arm_joints_->waitForServer(ros::Duration(5.0))){
+      ROS_ERROR("waiting for youbot_arm_joints actionlib");
+      if(++cnt == 5) return false;
+    }
+    cnt = 0;
+    while(!client_arm_ik_->waitForServer(ros::Duration(5.0))){
+      ROS_ERROR("waiting for youbot_arm_ik actionlib");
+      if(++cnt == 5) return false;
+    }
+
+
+    detected_objects_.clear();
+    action_.start();
+    ROS_INFO("Starting %s ...", action_name_.c_str());
+    return true;
+  }
+
+  void subObject(){
+    sub_object_ = nh_.subscribe( object_topic_,1, &LoadAction::objectCB,this);
+  }
+  
+  void subOdom(){
+    sub_odom_   = nh_.subscribe( odom_topic_,  1, &LoadAction::odomCB,this);
+  }
+
+  void unsubObject(){
+    sub_object_.shutdown();
+  }
+
+  void unsubOdom(){
+    sub_odom_.shutdown();
+  }
+
+  void unsubscribe(){
+    unsubObject();
+    unsubOdom();
+  }
+
+  //void configCallback(Config &config, uint32_t level){
+  //  boost::mutex::scoped_lock lock(mutex_);
+  //}
+
+  bool loadAllArmJoints(){
+    if(!loadArmJoints("arm_joints_look_table",armJointsLookTable_))
+      return false;
+    if(!loadArmJoints("arm_joints_standby",armJointsStandby_))
+      return false;
+    if(!loadArmJoints("arm_joints_ready_tray_left",armJointsReadyTrayLeft_))
+      return false;
+    if(!loadArmJoints("arm_joints_ready_tray_center",armJointsReadyTrayCenter_))
+      return false;
+    if(!loadArmJoints("arm_joints_ready_tray_right",armJointsReadyTrayRight_))
+      return false;
+    if(!loadArmJoints("arm_joints_tray_left",armJointsTrayLeft_))
+      return false;
+    if(!loadArmJoints("arm_joints_tray_center",armJointsTrayCenter_))
+      return false;
+    if(!loadArmJoints("arm_joints_tray_right",armJointsTrayRight_))
+      return false;
+    if(!loadArmJoints("arm_joints_transport",armJointsTransport_))
+      return false;
+    if(!loadArmJoints("arm_joints_before_tray_center",armJointsBeforeTrayCenter_))
+      return false;
+    //if(!loadArmJoints("gripper_open",gripperOpen_))
+    //  return false;
+    //if(!loadArmJoints("gripper_close",gripperClose_))
+    //  return false;
+    return true;
+  }
+
+  bool loadArmJoints(std::string name, std::vector<double>& joints){
+    //ROS_INFO("Loading arm joints ...");
+    try{
+      XmlRpc::XmlRpcValue list;
+      if( !pnh_.hasParam(name) ){
+        ROS_ERROR("Cannot find %s", name.c_str());
+        return false;
+      }
+      pnh_.getParam( name, list );
+      ROS_ASSERT(list.getType() == XmlRpc::XmlRpcValue::TypeArray);
+      //ROS_INFO("Found list size:%d", list.size());
+      joints.clear();
+      std::string str = "Loaded ";
+      str += name;
+      str +=":[";
+      for(size_t i = 0; i < list.size(); ++i){
+        ROS_ASSERT(list[i].getType() == XmlRpc::XmlRpcValue::TypeString);
+        std::string value = static_cast<std::string>(list[i]);
+        str += value;
+        str += " ";
+        joints.push_back( atof(value.c_str()) );
+      }
+      str += "]";
+      ROS_INFO("%s", str.c_str());
+    }
+    catch(ros::Exception e){
+      ROS_ERROR("%s", e.what());
+      return false;
+    }
+    return true;
+  }
+
+  void objectCB(const aricc_vision_msgs::ObjectArray::ConstPtr& msg){
+    boost::mutex::scoped_lock lock(mutex_);
+    ros::Time now = ros::Time::now();
+    detected_objects_.clear();
+    if( ( now - msg->header.stamp ).toSec() < 0.5 && 
+        msg->objects.size() != 0){
+      object_received_ = true;
+      detected_objects_ = msg->objects;
+      /*
+      for(size_t i = 0; i < msg->objects.size(); ++i){
+        aricc_vision_msgs::Object obj = msg->objects.at(i);
+        obj.position.y += offset_;
+        detected_objects_.push_back(obj);
+      }*/
+    }
+    std::string str = "detected objects:[";
+    for(size_t i = 0; i < detected_objects_.size(); ++i){
+      str += detected_objects_.at(i).name;
+      str += " ";
+    }
+    str += "]";
+    //ROS_INFO("%s",str.c_str());
+  }
+
+  void odomCB(const nav_msgs::Odometry::ConstPtr& msg){
+    boost::mutex::scoped_lock lock(mutex_);
+    odom_received_ = true;
+    double roll, pitch, yaw;
+    aricc_utils::quat2Euler(msg->pose.pose.orientation, roll, pitch, yaw);
+    odom_now_.x = msg->pose.pose.position.x;
+    odom_now_.y = msg->pose.pose.position.y;
+    odom_now_.theta = yaw;
+  }
+
+  StateEnum moveGripper( std::string cmd ){
+    if(!is_arm_sent_goal_){
+      youbot_arm_joints::JointGoal goal;
+      std::vector<double> joints;
+      joints.resize(2);
+      if(cmd == "open"){
+        joints[0] = 0.01;
+        joints[1] = 0.01;
+      }
+      else if(cmd == "close_light"){
+        joints[0] = 0.0;
+        joints[1] = 0.0;
+      }
+      else if(cmd == "close_heavy"){
+        joints[0] = 0.0;
+        joints[1] = 0.0;
+      }
+      goal.timeout = 20;
+      goal.name = "gripper";
+      goal.joints = joints;
+      client_arm_joints_->sendGoal(goal);
+      is_arm_sent_goal_ = true;
+      return ACTIVE;
+    }
+    if( client_arm_joints_->getState().toString() == "SUCCEEDED" ){ 
+      is_arm_sent_goal_ = false;   
+      return SUCCEEDED;
+    }
+    else if( client_arm_joints_->getState().toString() == "ABORTED" ){ 
+      is_arm_sent_goal_ = false;
+      return ABORTED; 
+    }
+    else return ACTIVE; 
+  }
+
+  StateEnum initArm(){
+    youbot_arm_joints::JointGoal goal;
+    goal.timeout = 20;
+    goal.name = "arm";
+    goal.joints = armJointsTransport_;
+    client_arm_joints_->sendGoal(goal);
+    client_arm_joints_->waitForResult(ros::Duration(20));
+    if( client_arm_joints_->getState().toString() == "SUCCEEDED" ){
+      is_arm_sent_goal_ = false;
+      return SUCCEEDED;
+    }
+    else if( client_arm_joints_->getState().toString() == "ABORTED" ){
+      is_arm_sent_goal_ = false;
+      return ABORTED;
+    }
+  }
+  
+  StateEnum moveArmJoints( std::vector<double> joints ){
+    if(!is_arm_sent_goal_){
+      youbot_arm_joints::JointGoal goal;
+      goal.timeout = 20;
+      goal.name = "arm";
+      goal.joints = joints;
+      client_arm_joints_->sendGoal(goal);
+      is_arm_sent_goal_ = true;
+      return ACTIVE;
+    }
+    if( client_arm_joints_->getState().toString() == "SUCCEEDED" ){ 
+      is_arm_sent_goal_ = false;   
+      return SUCCEEDED;
+    }
+    else if( client_arm_joints_->getState().toString() == "ABORTED" ){ 
+      is_arm_sent_goal_ = false;
+      return ABORTED; 
+    }
+    else return ACTIVE; 
+  }
+  
+  StateEnum moveArmIk( geometry_msgs::Point pos, geometry_msgs::Vector3 ori,
+    bool move_arm = true ){
+    if(!is_arm_sent_goal_){
+      youbot_arm_ik::IkGoal goal;
+      goal.timeout = 20;
+      goal.position = pos;
+      goal.orientation = ori;
+      goal.name = "preferred_pitch_ik";
+      goal.pitch = M_PI_2;
+      goal.move_arm = move_arm;
+      client_arm_ik_->sendGoal(goal);
+      is_arm_sent_goal_ = true;
+      return ACTIVE;
+    }
+    if( client_arm_ik_->getState().toString() == "SUCCEEDED" ){ 
+      is_arm_sent_goal_ = false;   
+      return SUCCEEDED;
+    }
+    else if( client_arm_ik_->getState().toString() == "ABORTED" ){ 
+      is_arm_sent_goal_ = false;
+      return ABORTED; 
+    }
+    else return ACTIVE; 
+  }
+
+  StateEnum moveArmUpDownIk(aricc_vision_msgs::Object object, int dir,
+    bool move_arm = true){
+    StateEnum state;
+    geometry_msgs::Point pos = object.position;
+    pos.x += offset_x_; 
+    pos.y += offset_y_;
+    geometry_msgs::Vector3 ori;
+    ori.x = object.orientation.z + offset_roll_;
+    ori.y = M_PI_2;
+    ori.z = 0.0;
+    if(fabs(pos.y) >= 0.05) return ABORTED;
+   
+    //move arm up
+    if(dir == 1) {
+      pos.z = offset_z_ + 0.04;
+      state = moveArmIk(pos, ori, move_arm);
+      if(move_arm && state == SUCCEEDED) sleep(1);
+      return state;
+    }
+    //move arm down
+    if(dir == -1){
+      //ROS_INFO("%u",cnt_arm_move_);
+      double offset = cnt_arm_move_*0.04;
+      pos.z = offset_z_ + 0.04 - offset; 
+      state = moveArmIk(pos, ori, move_arm);
+      if(state == SUCCEEDED) cnt_arm_move_++;
+      else if(state == ABORTED) return state;
+
+      if(cnt_arm_move_ == 2){
+        cnt_arm_move_ = 0;
+        if(move_arm && state == SUCCEEDED) sleep(1);
+        return state;
+      } 
+      return ACTIVE; 
+    }
+  }
+
+  StateEnum stopBase(){
+    geometry_msgs::Pose2D pose;
+    pose.x = 0.0;
+    pose.y = 0.0;
+    pose.theta = 0.0;
+    youbot_base_local_move::BaseGoal goal;
+    goal.timeout = 60;
+    goal.destination = pose;
+    client_base_->sendGoal(goal);
+    client_base_->waitForResult(ros::Duration(0.5));
+    if( client_base_->getState().toString() == "SUCCEEDED" ){
+      is_base_sent_goal_ = false;
+      return SUCCEEDED;
+    }
+    else if( client_base_->getState().toString() == "ABORTED" ){
+      is_base_sent_goal_ = false;
+      return ABORTED;
+    }
+  }
+
+  StateEnum moveBase( geometry_msgs::Pose2D pose){
+    if(!is_base_sent_goal_){
+      youbot_base_local_move::BaseGoal goal;
+      goal.timeout = 60;
+      goal.destination = pose;
+      client_base_->sendGoal(goal);
+      is_base_sent_goal_ = true;
+    }
+    if( client_base_->getState().toString() == "SUCCEEDED" ){ 
+      is_base_sent_goal_ = false;   
+      return SUCCEEDED;
+    }
+    else if( client_base_->getState().toString() == "ABORTED" ){ 
+      is_base_sent_goal_ = false;
+      return ABORTED; 
+    }
+    else return ACTIVE; 
+  }
+
+  StateEnum findObject( std::vector<std::string> items,
+    aricc_vision_msgs::Object& best_object ){
+    subObject();
+    boost::mutex::scoped_lock lock(mutex_);
+    if(!object_received_){
+      ROS_WARN("%s: Cannot receive object ", action_name_.c_str());
+      return ACTIVE;
+    }
+    object_received_ = false;
+    if( ++cnt_find_object_ >= 20 ) {
+      cnt_find_object_ = 0;
+      return ABORTED;
+    }
+
+    std::vector<aricc_vision_msgs::Object> cd_objects;
+    cd_objects.clear();
+    for(size_t i = 0; i < detected_objects_.size(); ++i){
+      std::string name = detected_objects_.at(i).name;
+      for(size_t j = 0; j < items.size(); ++j){
+        if( name == items[j] ){ 
+          cd_objects.push_back(detected_objects_.at(i));
+        }
+      }
+    }
+    if(cd_objects.size() == 0) return ACTIVE;
+
+    //Sort objects by absolute distance
+    std::sort(cd_objects.begin(), cd_objects.end(),objectSort);
+    //ROS_INFO("cd_objects:%lu, items:%lu",cd_objects.size(), items.size());
+    best_object = cd_objects[0];
+    ROS_INFO("best_object: %s:[%.3lf,%.3lf,%.3lf]",best_object.name.c_str(),
+      best_object.position.x, best_object.position.y, 
+      aricc_utils::rad2Deg(best_object.orientation.z));
+    unsubObject();
+    cnt_find_object_ = 0;
+    return SUCCEEDED;
+  }
+
+  void updateItemListAndTray( std::vector<std::string>& items, 
+    std::vector<std::string>& tray,
+    aricc_vision_msgs::Object object, size_t slot){
+    
+    tray[slot] = object.name;
+
+    std::vector< std::string >::iterator it_item;
+    it_item = items.begin();
+    for( ; it_item != items.end(); ++it_item ){
+      if(object.name == *it_item){
+        it_item = items.erase(it_item);
+        break;
+      }
+    }
+
+    std::string str = "Tray_state:[";
+    for(size_t i = 0; i < tray.size(); ++i){
+      str += tray.at(i);
+      str += " ";
+    }
+    str += "], items:[";
+    for(size_t i = 0; i < items.size(); ++i){
+      str += items.at(i);
+      str += " ";
+    }
+    str += "]";
+    ROS_INFO("%s",str.c_str());
+  }
+
+  size_t getEmptyTraySlot( std::vector<std::string> tray, size_t& slot ){
+    std::vector<size_t> empty_slots;
+    empty_slots.clear();
+    for( size_t i = 0; i < tray.size(); ++i ){
+      if(tray.at(i) == "empty") empty_slots.push_back(i);
+    }
+    if( empty_slots.size() != 0 ) slot = empty_slots[0];
+    ROS_INFO("Get empty slot: %lu, %lu", slot, empty_slots.size());
+    return empty_slots.size();
+  }
+
+  StateEnum taskStep(){
+   if( dist_left_ <= 0.01 ){
+      ROS_WARN("Robot has moved %.3lf, task succeeded", dist_);
+      return SUCCEEDED;
+    }
+
+    if( task_.now != task_.last )
+      ROS_INFO( "Task now: %s",task_.toString().c_str() );
+     task_.last = task_.now;
+    //ROS_INFO( "Task now: %s",task_.toString().c_str() );
+
+    StateEnum state;
+    geometry_msgs::Pose2D basePose;
+    switch(task_.now){
+      case kArmLookTable:
+        state = moveArmJoints(armJointsLookTable_);
+        if(state == SUCCEEDED) task_.now = kBaseMoveLeft;
+        //else if(state == ABORTED) return ABORTED;
+      break;
+
+      case kBaseMoveLeft:
+        basePose.x = 0.0; basePose.y = dist_left_; basePose.theta = 0.0;
+        state = moveBase(basePose);
+        task_.now = kMoveFindObject;
+        //else if(state == SUCCEEDED) return SUCCEEDED;
+        //else if(state == ABORTED) return ABORTED;
+      break;
+
+      case kMoveFindObject:
+        state = findObject( task_.items,best_object_);
+        if( state == SUCCEEDED ) task_.now = kStopBase;
+      break;
+
+      case kStopBase:
+        state = stopBase();
+        if( state == SUCCEEDED ) task_.now = kStaticFindObject;
+        else if(state == ABORTED) return ABORTED;
+      break;
+      
+      case kStaticFindObject:
+        state = findObject(task_.items,best_object_);
+        if(state == SUCCEEDED) task_.now = kBaseAlignObject;
+        else if(state == ABORTED) task_.now = kBaseMoveLeft;
+      break;
+      
+      case kBaseAlignObject:
+        basePose.x = 0.0; 
+        basePose.y = best_object_.position.y + offset_y_;
+        basePose.theta = 0.0;
+        state = moveBase(basePose);
+        if(state == SUCCEEDED) task_.now = kStaticFindObjectBeforeGrasp;
+        else if(state == ABORTED) task_.now = kBaseMoveLeft;
+      break;
+      
+      case kStaticFindObjectBeforeGrasp:
+        state = findObject(task_.items,best_object_);
+        if(state == SUCCEEDED) task_.now = kCheckArmIkBeforeGrasp;
+        else if(state == ABORTED) task_.now = kBaseMoveLeft;
+      break;
+      
+      case kCheckArmIkBeforeGrasp:
+        state = moveArmUpDownIk(best_object_, -1, false);
+        if(state == SUCCEEDED) task_.now = kOpenGripperBeforeGrasp;
+        else if(state == ABORTED) task_.now = kBaseMoveLeft;
+      break;
+
+      case kOpenGripperBeforeGrasp:
+        state = moveGripper("open");
+        if(state == SUCCEEDED) task_.now = kArmReadyBeforeGrasp;
+        //else if(state == ABORTED) task_.now = kArmLookTable;
+      break;
+
+      case kArmReadyBeforeGrasp:
+        state = moveArmJoints(armJointsStandby_);
+        if(state == SUCCEEDED) task_.now = kArmGoDownBeforeGrasp;
+        //else if(state == ABORTED) task_.now = kArmLookTable;
+      break;
+
+      case kArmGoDownBeforeGrasp:
+        state = moveArmUpDownIk(best_object_, -1);
+        if(state == SUCCEEDED) task_.now = kCloseGripperGrasp;
+        else if(state == ABORTED) task_.now = kArmLookTable;
+      break;
+      
+      case kCloseGripperGrasp:
+        if(best_object_.name == "S40_40_G" ||
+           best_object_.name == "S40_40_B" ||
+           best_object_.name == "M30")
+          state = moveGripper("close_light");
+        else state = moveGripper("close_heavy");
+        if(state == SUCCEEDED) task_.now = kArmGoUpAfterGrasp;
+        //else if(state == ABORTED) task_.now = kArmLookTable;
+      break;
+
+      case kArmGoUpAfterGrasp:
+        state = moveArmUpDownIk(best_object_, 1);
+        if(state == SUCCEEDED) task_.now = kArmReadyAfterGrasp;
+        //else if(state == ABORTED) task_.now = kArmLookTable;
+      break;
+
+      case kArmReadyAfterGrasp:
+        state = moveArmJoints(armJointsStandby_);
+        if(state == SUCCEEDED){ 
+          task_.now = kArmReadyBeforeLoad;
+          getEmptyTraySlot( tray_state_,best_slot_ );
+        }
+        //else if(state == ABORTED) task_.now = kArmLookTable;
+      break;
+      
+      case kArmReadyBeforeLoad:
+        if(best_slot_ == 0) 
+          state = moveArmJoints(armJointsReadyTrayLeft_);
+        if(best_slot_ == 1) 
+          state = moveArmJoints(armJointsReadyTrayCenter_);
+        if(best_slot_ == 2) 
+          state = moveArmJoints(armJointsReadyTrayRight_);
+        if(state == SUCCEEDED){
+          if(best_slot_ == 1) task_.now = kArmReadyBeforeLoadCenter;
+          else task_.now = kArmLoad;
+        }
+        //else if(state == ABORTED) task_.now = kArmLookTable;
+      break;
+
+      case kArmReadyBeforeLoadCenter:
+        state = moveArmJoints(armJointsBeforeTrayCenter_);
+        if(state == SUCCEEDED) task_.now = kArmLoad;
+      break;
+
+      case kArmLoad:
+        if(best_slot_ == 0) 
+          state = moveArmJoints(armJointsTrayLeft_);
+        if(best_slot_ == 1) 
+          state = moveArmJoints(armJointsTrayCenter_);
+        if(best_slot_ == 2) 
+          state = moveArmJoints(armJointsTrayRight_);
+        if(state == SUCCEEDED) task_.now = kOpenGripperLoad;
+        //else if(state == ABORTED) return ABORTED;
+      break;
+
+      case kOpenGripperLoad:
+        state = moveGripper("open");
+        if(state == SUCCEEDED){
+          if(best_slot_ == 1) task_.now = kArmReadyAfterLoadCenter;
+          else task_.now = kArmReadyAfterLoad;
+        }
+        //else if(state == ABORTED) return ABORTED;
+      break;
+
+      case kArmReadyAfterLoadCenter:
+        state = moveArmJoints(armJointsBeforeTrayCenter_);
+        if(state == SUCCEEDED) task_.now = kArmReadyAfterLoad;
+      break;
+      
+      case kArmReadyAfterLoad:
+        if(best_slot_ == 0) 
+          state = moveArmJoints(armJointsReadyTrayLeft_);
+        if(best_slot_ == 1) 
+          state = moveArmJoints(armJointsReadyTrayCenter_);
+        if(best_slot_ == 2) 
+          state = moveArmJoints(armJointsReadyTrayRight_);
+        if(state == SUCCEEDED){
+          updateItemListAndTray(task_.items, tray_state_,
+            best_object_, best_slot_);
+          task_.now = kArmStandby;
+        }
+        //else if(state == ABORTED) return ABORTED;
+      break;
+
+      case kArmStandby:
+        state = moveArmJoints(armJointsStandby_);
+        if(state == SUCCEEDED) {
+          if(task_.items.size() == 0) task_.now = kFinishTask;
+          else task_.now = kArmLookTable;
+        }
+        //else if(state == ABORTED) return ABORTED;
+      break;
+
+      case kFinishTask:
+        state = moveArmJoints(armJointsTransport_);
+        if(state == SUCCEEDED) return SUCCEEDED;
+        else if(state == ABORTED) return ABORTED;
+    }
+    return ACTIVE;
+  }
+
+  void resetState(){
+    stopBase();
+    initArm();
+    object_received_ = false;
+    odom_received_ = false;
+    is_arm_sent_goal_ = false;
+    is_base_sent_goal_ = false;
+    is_new_goal_ = true;    
+
+    time_start_ = ros::Time::now();
+    task_.now = kArmLookTable;
+    detected_objects_.clear();
+    client_arm_joints_->cancelGoal();
+    client_arm_ik_->cancelGoal();
+    client_base_->cancelGoal();
+    unsubscribe();
+    resetOdom(odom_dist_);
+    resetOdom(odom_start_);
+    resetOdom(odom_last_);
+    resetOdom(odom_now_);
+  }
+
+  bool initOdom(){
+    subOdom();
+    boost::mutex::scoped_lock lock(mutex_);
+    if(!odom_received_) return false;
+    odom_start_  = odom_now_;
+    odom_last_   = odom_now_;
+    time_start_  = ros::Time::now();
+    return true;
+  }
+  
+  void resetOdom(geometry_msgs::Pose2D& odom){
+    odom.x = 0.0;
+    odom.y = 0.0;
+    odom.theta = 0.0;
+  }
+
+  void rotatePose2D(double &x, double &y, double theta){
+    Eigen::Vector3f src;
+    Eigen::Vector3f dst;
+    Eigen::Matrix3f rot_matrix_z;
+    src << x,y,0;
+    rot_matrix_z << cos(theta), -sin(theta), 0,
+                    sin(theta), cos(theta), 0,
+                    0, 0, 1;
+    dst = rot_matrix_z * src;
+    x = dst[0];
+    y = dst[1];
+  }
+
+  bool updateOdom(){
+    boost::mutex::scoped_lock lock(mutex_);
+    if(!odom_received_){
+      ROS_WARN("%s: Cannot receive odom state ", action_name_.c_str());
+      return false;
+    }
+    odom_received_ = false;
+
+    double diff_x, diff_y, diff_th;
+    diff_x  = odom_now_.x - odom_last_.x;
+    diff_y  = odom_now_.y - odom_last_.y;
+    diff_th = odom_now_.theta - odom_last_.theta;
+
+    //odom_dist_.x = odom_now_.x - odom_start_.x;
+    //odom_dist_.y = odom_now_.y - odom_start_.y;
+
+    rotatePose2D( diff_x, diff_y, -odom_start_.theta );
+    if(diff_x < 1.0) odom_dist_.x += diff_x;
+    if(diff_y < 1.0) odom_dist_.y += diff_y;
+    if(fabs(diff_th) < M_PI) odom_dist_.theta += diff_th;
+    if(fabs(odom_dist_.theta) > M_PI*2.0) odom_dist_.theta = 0.0;
+    //ROS_INFO_THROTTLE( 0.5,"odom:(%.3lf,%.3lf,%.3lf)",
+    //  odom_dist_.x, odom_dist_.y, aricc_utils::rad2Deg(odom_dist_.theta));
+
+    odom_last_ = odom_now_;
+    dist_left_ = dist_- odom_dist_.y;
+    //ROS_INFO_THROTTLE(1.0,"dist left:%.3lf",dist_left_);
+    return true;
+  }
+
+  StateEnum isGoalValid( youbot_load_object::LoadGoal goal){
+    ROS_INFO("%s: accept goal", action_name_.c_str());
+    if( isnan(goal.timeout) || isinf(goal.timeout)){
+      ROS_ERROR("Goal has NAN item");
+      return ABORTED;
+    }
+    if( isnan(goal.table_height) || isinf(goal.table_height)){
+      ROS_ERROR("Goal has NAN item");
+      return ABORTED;
+    }
+    size_t item_size = goal.items.size();
+    size_t tray_size = goal.tray_state.size();
+
+    if( item_size < 0 || item_size > 3 ){
+      ROS_ERROR("item size is %lu, but it should be within [0,3]", item_size);
+      return ABORTED;
+    }
+    if( tray_size < 0  || tray_size > 3 ){
+      ROS_ERROR("tray size is %lu, but it should be within [0,3]", tray_size);
+      return ABORTED;
+    }
+
+    std::string str = "Goal:";
+    std::ostringstream strs;
+    strs << goal.timeout <<"," << goal.table_height;
+    str += strs.str();
+    str += " items:[";
+    for(size_t i = 0; i < item_size; ++i){
+      str += goal.items.at(i);
+      str += " ";
+    }
+    str += "],tray:[";
+    for(size_t i = 0; i < tray_size; ++i){
+      str += goal.tray_state.at(i);
+      str += " ";
+    }
+    str += "]";
+    ROS_INFO("%s", str.c_str());
+    
+    for(size_t i = 0; i < table_list_.size(); ++i){
+      if(goal.table_height == table_list_[i].height){ 
+        offset_x_ = table_list_[i].offset_x;
+        offset_y_ = table_list_[i].offset_y;
+        offset_z_ = table_list_[i].offset_z;
+        object_detect_z_ = table_list_[i].object_detect_z;
+      }
+    }
+    
+    double old_value = 0;
+    if(!target_nh_.getParam(table_height_param_, old_value)){
+        ROS_ERROR("The namespace %s, does not have the parameter %s", target_nh_.getNamespace().c_str(), table_height_param_.c_str());
+      return ABORTED;  
+    }
+    ROS_INFO("The namespace %s, have the parameter %s, current value is %lf", target_nh_.getNamespace().c_str(), table_height_param_.c_str(), old_value);
+    
+    
+    //Change param for object detection
+    //dynamic_reconfigure::Reconfigure reconfig;
+    //dynamic_reconfigure::DoubleParameter new_param;
+    //new_param.name = table_height_param_;
+    //new_param.value = object_detect_z_;
+    //reconfig.request.config.doubles.clear();
+    //reconfig.request.config.doubles.push_back(new_param);
+    unsigned int cnt = 0;
+    double new_value = 0;
+    while(1){    
+      try {
+        target_nh_.setParam(table_height_param_, object_detect_z_);
+        //dynamic_reconfigure_service_.call(reconfig);
+        ROS_WARN("Setting %s/%s: %.3lf", target_nh_.getNamespace().c_str(),table_height_param_.c_str(), object_detect_z_);
+      }
+      catch(...) {
+        ROS_ERROR("Something went wrong in the service call to dynamic_reconfigure");
+        return ABORTED;
+      }
+      
+      if(!target_nh_.getParam(table_height_param_, new_value)){
+        ROS_ERROR("The namespace %s, does not have the parameter %s", target_nh_.getNamespace().c_str(), table_height_param_.c_str());
+        return ABORTED;
+      }
+      if(new_value == object_detect_z_){
+        ROS_INFO("The namespace %s, have the parameter %s, the new value is %.3lf", target_nh_.getNamespace().c_str(), table_height_param_.c_str(), new_value);
+        break;
+      }
+      if(++cnt == 5) {
+        ROS_ERROR("The namespace %s, have the parameter %s, the current value is %.3lf, is not %.3lf", target_nh_.getNamespace().c_str(), table_height_param_.c_str(), new_value, object_detect_z_);
+        return ABORTED;
+      }
+      sleep(1);
+    }
+
+    timeout_ = goal.timeout;
+    table_height_ = goal.table_height;
+    tray_state_ = goal.tray_state;
+    
+    size_t slot;
+    tray_size = getEmptyTraySlot( tray_state_, slot );
+    if( tray_size == 0 ) return SUCCEEDED;
+    if( item_size == 0 ) return SUCCEEDED;
+
+    task_.items.clear();
+    if(item_size <= tray_size) task_.items = goal.items;
+    if(item_size > tray_size){
+      for(size_t i = 0; i < tray_size; ++i)
+        task_.items.push_back(goal.items.at(i));
+    }
+    str = "Finalized task items: [";
+    for(size_t i = 0; i < task_.items.size(); ++i){
+      str += task_.items.at(i);
+      str += " ";
+    }
+    str += "]";
+    ROS_INFO("%s",str.c_str());
+    return ACTIVE;
+  }
+
+  void setAborted(youbot_load_object::LoadResult result, 
+    std::string str = ""){
+    ROS_ERROR("%s: Aborted, %s", action_name_.c_str(), str.c_str());
+    result.tray_state = tray_state_;
+    action_.setAborted(result);
+    resetState();
+  }
+
+  void setSucceeded(youbot_load_object::LoadResult result){
+    ROS_INFO("%s: Succeeded, take %.3lf s", action_name_.c_str(),
+      (time_now_ - time_start_).toSec());
+    result.tray_state = tray_state_;
+    action_.setSucceeded(result);
+    resetState();
+  }
+
+  void setPreempted(){
+    ROS_WARN("%s: Preempted", action_name_.c_str());
+    action_.setPreempted();
+    resetState();
+  }
+
+  void executeCB(const youbot_load_object::LoadGoalConstPtr &goal_msg){
+    goal_ = *goal_msg;
+    
+    StateEnum goal_state = isGoalValid(goal_);
+    if( goal_state == ABORTED ){
+      setAborted(result_,"Goal is invalid");
+      return;
+    }
+    else if( goal_state == SUCCEEDED){
+      setSucceeded(result_);
+      return;
+    }
+    resetState();
+    ros::Rate r(rate_);
+    
+    while(action_.isActive() || ros::ok()){
+      r.sleep();
+      if( r.cycleTime() > ros::Duration(1.0/rate_) )
+        ROS_WARN("%s: Control desired rate of %.3lfHz... the loop actually took %.4lf seconds", action_name_.c_str(), rate_, r.cycleTime().toSec());
+
+      if( is_new_goal_ ) {
+        if( initOdom() ) is_new_goal_ = false;
+        continue;
+      }
+
+      time_now_ = ros::Time::now(); 
+      if( (time_now_ - time_start_).toSec() >= goal_.timeout && 
+        goal_.timeout != 0.0 ){
+        setAborted(result_, "Timeout");
+        return;
+      }
+
+      if( action_.isPreemptRequested() ){
+        if( action_.isNewGoalAvailable() ){
+          goal_ = *(action_.acceptNewGoal());
+          StateEnum goal_state = isGoalValid(goal_);
+          if( goal_state == ABORTED ){
+            setAborted(result_,"Goal is invalid");
+            return;
+          }
+          else if( goal_state == SUCCEEDED){
+            setSucceeded(result_);
+            return;
+          }
+          else if(goal_state = ACTIVE) {
+            ROS_INFO("%s: accept new goal", action_name_.c_str());
+            resetState();
+          }
+        }
+        else{ setPreempted(); return; }
+      }
+      //control loop
+      updateOdom();
+      StateEnum state = taskStep();
+      if( state == SUCCEEDED ) { setSucceeded(result_); return; }
+      else if( state == ABORTED ) { setAborted(result_); return; }
+    }
+  }
+};
+
+int main(int argc, char **argv) {
+  ros::init(argc, argv, "youbot_load_object_server");
+  LoadAction action(ros::this_node::getName());
+  if(!action.initAction()) return 0;
+  ros::spin();
+  return 0;
+}

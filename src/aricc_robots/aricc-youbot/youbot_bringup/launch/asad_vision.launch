@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="nodelet_manager" default="aricc_nodelet_manager"/>
+  <arg name="rgb_image" default="/softkinetics_camera_ros/rgb/image"/>
+  <arg name="depth_image" default="/softkinetics_camera_ros/depth/image"/>
+  <arg name="rgb_camera_info" default="/softkinetics_camera_ros/rgb/camera_info"/>
+  <arg name="depth_camera_info" default="/softkinetics_camera_ros/depth/camera_info"/>
+  <arg name="group_name" default="asad_vision"/>
+
+<!-- Object detection -->
+
+<group ns="$(arg group_name)">
+
+  <node pkg="nodelet" type="nodelet" name="$(arg nodelet_manager)" args="manager" output="screen"/>
+
+  <node pkg="nodelet" type="nodelet" name="ObjectDetector"
+        args="load aricc_2d_vision/ObjectDetector $(arg nodelet_manager)">
+    <remap from="~input" to="$(arg rgb_image)" />
+    <rosparam>
+    </rosparam>
+  </node>
+
+</group>
+
+  <!--node pkg="rqt_gui" type="rqt_gui" name="rqt_gui" /-->
+</launch>
+

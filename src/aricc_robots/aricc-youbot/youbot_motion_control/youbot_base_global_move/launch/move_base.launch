@@ -1,0 +1,6 @@
+<launch>
+  <include file="$(find youbot_base_global_move)/launch/mapserver.launch" />
+  <include file="$(find youbot_base_global_move)/launch/amcl.launch" />
+  <include file="$(find youbot_base_global_move)/launch/move_base_global.launch" />
+
+</launch>

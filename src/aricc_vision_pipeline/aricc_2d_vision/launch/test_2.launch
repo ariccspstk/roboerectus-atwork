@@ -1,0 +1,92 @@
+<?xml version="1.0"?>
+<!--
+Demo launch file to run single passthrough filter in stand alone.
+-->
+<launch>
+  <arg name="nodelet_manager" default="aricc_2d_vision_nodelet"/>
+  <arg name="rgb_image" default="/softkinetics_camera_ros/rgb/image"/>
+  <arg name="depth_image" default="/softkinetics_camera_ros/depth/image"/>
+  <arg name="rgb_camera_info" default="/softkinetics_camera_ros/rgb/camera_info"/>
+  <arg name="depth_camera_info" default="/softkinetics_camera_ros/depth/camera_info"/>
+ <include file="$(find youbot_bringup)/launch/softkinetics.launch"/> 
+  <node pkg="nodelet" type="nodelet" name="$(arg nodelet_manager)" args="manager" output="screen"/>
+  
+  <node pkg="nodelet" type="nodelet" name="RectToMaskImage"
+        args="load aricc_2d_vision/RectToMaskImage $(arg nodelet_manager)">
+    <remap from="~input/camera_info" to="$(arg rgb_camera_info)" />
+    <rosparam>
+      left_top_x: 215
+      left_top_y: 60
+      width: 350
+      height: 420
+    </rosparam>
+  </node>
+
+  <node pkg="nodelet" type="nodelet" name="ApplyMaskImage"
+        args="load aricc_2d_vision/ApplyMaskImage $(arg nodelet_manager)">
+    <remap from="~input" to="$(arg rgb_image)" />
+    <remap from="~input/mask" to="/RectToMaskImage/output" />
+    <rosparam>
+      approximate_sync: false
+    </rosparam>
+  </node>
+  
+  <node pkg="nodelet" type="nodelet" name="SmoothingImage"
+        args="load aricc_2d_vision/SmoothingImage $(arg nodelet_manager)">
+    <remap from="~input" to="/ApplyMaskImage/output" />
+    <rosparam>
+      method: 1
+      kernel_size: 3 
+    </rosparam>
+  </node>
+  
+  <node pkg="nodelet" type="nodelet" name="CreateThresholdImage"
+        args="load aricc_2d_vision/CreateThresholdImage $(arg nodelet_manager)">
+    <remap from="~input" to="/SmoothingImage/output" />
+    <rosparam>
+      block_size: 7
+      constant: 7
+    </rosparam>
+  </node>
+  
+  <node pkg="nodelet" type="nodelet" name="ErodeImage"
+        args="load aricc_2d_vision/ErodeImage $(arg nodelet_manager)">
+    <remap from="~input" to="/UnapplyMaskImage/output" />
+    <rosparam>
+      
+    </rosparam>
+  </node>
+  <node pkg="nodelet" type="nodelet" name="DilateImage"
+        args="load aricc_2d_vision/DilateImage $(arg nodelet_manager)">
+    <remap from="~input" to="/ErodeImage/output" />
+    <rosparam>
+      
+    </rosparam>
+  </node>
+  <node pkg="nodelet" type="nodelet" name="ContourFinder"
+        args="load aricc_2d_vision/ContourFinder $(arg nodelet_manager)">
+    <remap from="~input" to="/ApplyMaskImage/output" />
+    <rosparam>
+      approximate_sync: false
+    </rosparam>
+  </node>
+
+  <node pkg="nodelet" type="nodelet" name="ShapeMatch"
+        args="load aricc_2d_vision/ShapeMatch $(arg nodelet_manager)">
+    <remap from="~input" to="/ContourFinder/output" />
+    <rosparam>
+      approximate_sync: false
+    </rosparam>
+  </node>
+
+
+  <node pkg="nodelet" type="nodelet" name="UnapplyMaskImage"
+        args="load aricc_2d_vision/UnapplyMaskImage $(arg nodelet_manager)">
+    <remap from="~input" to="/CreateThresholdImage/output" />
+    <remap from="~input/mask" to="/RectToMaskImage/output" />
+    <rosparam>
+      approximate_sync: false
+    </rosparam>
+  </node>
+  
+</launch>

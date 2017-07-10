@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+
+<launch>
+    <node pkg="aricc_twist_mux" type="aricc_twist_mux" name="aricc_twist_mux" output="screen" >
+        <rosparam file="$(find aricc_twist_mux)/config/twist_mux.yaml" command="load" />
+	<!--remap from="cmd_twist_muxed" to="cmd_vel"/-->
+    </node>
+
+</launch>

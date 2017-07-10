@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+  <node pkg="youbot_base_align_dock" type="youbot_base_align_dock_controller" name="youbot_base_align_dock_controller" output="screen">
+  </node>
+
+  <node pkg="rqt_gui" type="rqt_gui" name="rqt_gui" />
+
+</launch>
+

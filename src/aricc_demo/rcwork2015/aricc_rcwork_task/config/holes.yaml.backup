@@ -1,0 +1,10 @@
+objects:
+  - {name: 'F20_20',   width: '0.035', height: '0.108', color: '145'}
+  - {name: 'S40_40',   width: '0.055', height: '0.105', color: '160'}
+  - {name: 'M20_100',  width: '0.050', height: '0.122', color: '122'}
+  - {name: 'M20_100',  width: '0.047', height: '0.107', color: '130'}
+  - {name: 'M20',      width: '0.042', height: '0.042', color: '132'}
+  - {name: 'M30',      width: '0.055', height: '0.061', color: '155'}
+  - {name: 'R20',      width: '0.044', height: '0.057', color: '136'}
+  - {name: 'V20',      width: '0.046', height: '0.060', color: '-1'}
+

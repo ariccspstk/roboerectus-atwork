@@ -1,0 +1,19 @@
+<library path="libaricc_3d_vision">
+  <class name="aricc_3d_vision/PassThroughFilter" type="aricc_3d_vision::PassThroughFilter" base_class_type="nodelet::Nodelet">
+  <description>
+    Passthrough filter
+  </description>
+  </class>
+  
+  <class name="aricc_3d_vision/BorderEstimator" type="aricc_3d_vision::BorderEstimator" base_class_type="nodelet::Nodelet">
+  <description>
+    Border Estimator from range image
+  </description>
+  </class>
+
+  <class name="aricc_3d_vision/ShowPCLIndices" type="aricc_3d_vision::ShowPCLIndices" base_class_type="nodelet::Nodelet">
+  <description>
+    Show PCLIndicesMsg and publish it for visulization purpose
+  </description>
+  </class>
+</library>

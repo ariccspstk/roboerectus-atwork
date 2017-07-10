@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<!--
+Demo launch file to run single passthrough filter in stand alone.
+-->
+<launch>
+  <arg name="nodelet_manager" default="test_nodelet"/>
+  <arg name="input_cloud" default="/softkinetic_camera/depth/points"/>
+  <arg name="input_camera_info" default="/softkinetic_camera/depth/camera_info"/>
+
+  <include file="$(find softkinetic_camera)/launch/softkinetic_camera_ds325.launch" />
+  
+  <node pkg="nodelet" type="nodelet" name="$(arg nodelet_manager)" args="manager" output="screen"/>
+  
+  <node pkg="nodelet" type="nodelet" name="BorderEstimator"
+        args="load aricc_3d_vision/BorderEstimator $(arg nodelet_manager)">
+    <remap from="~input" to="$(arg input_cloud)" />
+    <remap from="~input_camera_info" to="$(arg input_camera_info)" />
+    <rosparam>
+      model_type: "planar"
+    </rosparam>
+  </node>
+  
+  <node pkg="nodelet" type="nodelet" name="ShowPCLIndices_border"
+        args="load aricc_3d_vision/ShowPCLIndices $(arg nodelet_manager)">
+    <remap from="~input_cloud" to="$(arg input_cloud)" />
+    <remap from="~input_indices" to="BorderEstimator/output_border_indices" />
+    <rosparam>
+      color: "green"
+    </rosparam>
+  </node>
+  
+  <node pkg="nodelet" type="nodelet" name="ShowPCLIndices_veil"
+        args="load aricc_3d_vision/ShowPCLIndices $(arg nodelet_manager)">
+    <remap from="~input_cloud" to="/ShowPCLIndices_border/output_cloud" />
+    <remap from="~input_indices" to="BorderEstimator/output_veil_indices" />
+    <rosparam>
+      color: "red"
+    </rosparam>
+  </node>
+  
+  <node pkg="nodelet" type="nodelet" name="ShowPCLIndices_shadow"
+        args="load aricc_3d_vision/ShowPCLIndices $(arg nodelet_manager)">
+    <remap from="~input_cloud" to="/ShowPCLIndices_veil/output_cloud" />
+    <remap from="~input_indices" to="BorderEstimator/output_shadow_indices" />
+    <rosparam>
+      color: "blue"
+    </rosparam>
+  </node>
+</launch>

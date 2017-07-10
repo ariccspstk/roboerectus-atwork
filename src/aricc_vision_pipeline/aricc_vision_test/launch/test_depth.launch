@@ -1,0 +1,123 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="nodelet_manager" default="aricc_nodelet_manager"/>
+  <arg name="rgb_image" default="/softkinetics_camera_ros/rgb/image"/>
+  <arg name="depth_image" default="/softkinetics_camera_ros/depth/image"/>
+  <arg name="rgb_camera_info" default="/softkinetics_camera_ros/rgb/camera_info"/>
+  <arg name="depth_camera_info" default="/softkinetics_camera_ros/depth/camera_info"/>
+  
+  <include file="$(find softkinetics_camera_ros)/launch/softkinetics.launch" />
+
+  <node pkg="nodelet" type="nodelet" name="$(arg nodelet_manager)" args="manager" output="screen"/>
+  
+  <!--node pkg="nodelet" type="nodelet" name="DepthRegister"
+        args="load aricc_depth_vision/DepthRegister $(arg nodelet_manager)">
+    <remap from="~input" to="$(arg depth_image)" />
+    <remap from="~input/depth_camera_info" to="$(arg depth_camera_info)" />
+    <remap from="~input/rgb_camera_info" to="$(arg rgb_camera_info)" />
+    <rosparam>
+      approximate_sync: true
+      queue_size: 5
+    </rosparam>
+  </node-->
+
+  <node pkg="nodelet" type="nodelet" name="DepthToGrayImage"
+        args="load aricc_depth_vision/DepthToGrayImage $(arg nodelet_manager)">
+    <remap from="~input" to="$(arg depth_image)" />
+    <rosparam>
+      min_range: 0.47
+      max_range: 0.50
+    </rosparam>
+  </node>
+
+  <node pkg="nodelet" type="nodelet" name="RectToMaskImage"
+        args="load aricc_2d_vision/RectToMaskImage $(arg nodelet_manager)">
+    <remap from="~input/camera_info" to="$(arg depth_camera_info)" />
+    <rosparam>
+      left_top_x: 100
+      left_top_y: 40
+      width: 115
+      height: 200
+    </rosparam>
+  </node>
+
+  <node pkg="nodelet" type="nodelet" name="ApplyMaskImageDepth"
+        args="load aricc_2d_vision/ApplyMaskImage $(arg nodelet_manager)">
+    <remap from="~input" to="DepthToGrayImage/output" />
+    <remap from="~input/mask" to="/RectToMaskImage/output" />
+    <rosparam>
+      approximate_sync: false
+    </rosparam>
+  </node>
+  
+  <node pkg="nodelet" type="nodelet" name="SmoothingImageDepth"
+        args="load aricc_2d_vision/SmoothingImage $(arg nodelet_manager)">
+    <remap from="~input" to="ApplyMaskImageDepth/output" />
+    <rosparam>
+      method: 1
+      kernel_size: 3
+    </rosparam>
+  </node>
+  
+  <node pkg="nodelet" type="nodelet" name="CreateThresholdImageDepth"
+        args="load aricc_2d_vision/CreateThresholdImage $(arg nodelet_manager)">
+    <remap from="~input" to="/SmoothingImageDepth/output" />
+    <rosparam>
+      block_size: 7
+      constant: 14
+    </rosparam>
+  </node>
+
+   <node pkg="nodelet" type="nodelet" name="ErodeMaskImage"
+        args="load aricc_2d_vision/ErodeImage $(arg nodelet_manager)">
+    <remap from="~input" to="/CreateThresholdImageDepth/output" />
+    <rosparam>
+    </rosparam>
+  </node>
+
+   <node pkg="nodelet" type="nodelet" name="DilateMaskImage"
+        args="load aricc_2d_vision/DilateImage $(arg nodelet_manager)">
+    <remap from="~input" to="/ErodeMaskImage/output" />
+    <rosparam>
+    </rosparam>
+  </node>
+
+  <node pkg="nodelet" type="nodelet" name="EdgeFinder"
+        args="load aricc_2d_vision/EdgeFinder $(arg nodelet_manager)">
+    <!--remap from="~input" to="/DilateMaskImage/output" /-->
+    <remap from="~input" to="/CreateThresholdImageDepth/output" />
+    <!--remap from="~input" to="/SmoothingImageDepth/output" /-->
+    <rosparam>
+    </rosparam>
+  </node>
+  
+  <node pkg="nodelet" type="nodelet" name="DilateImage"
+        args="load aricc_2d_vision/DilateImage $(arg nodelet_manager)">
+    <remap from="~input" to="/EdgeFinder/output" />
+    <rosparam>
+
+    </rosparam>
+  </node>
+  
+  <node pkg="nodelet" type="nodelet" name="UnapplyMaskImage"
+        args="load aricc_2d_vision/UnapplyMaskImage $(arg nodelet_manager)">
+    <remap from="~input" to="/DilateImage/output" />
+    <remap from="~input/mask" to="/RectToMaskImage/output" />
+    <rosparam>
+      approximate_sync: true
+    </rosparam>
+  </node>
+
+  <node pkg="nodelet" type="nodelet" name="ContourFinder"
+        args="load aricc_2d_vision/ContourFinder $(arg nodelet_manager)">
+    <remap from="~input" to="/UnapplyMaskImage/output" />
+    <rosparam>
+      approximate_sync: true
+      min_size: 500
+      debug: true
+    </rosparam>
+  </node>
+  
+  <node pkg="rqt_gui" type="rqt_gui" name="rqt_gui" />
+</launch>
+

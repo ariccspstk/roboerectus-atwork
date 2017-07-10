@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>CSBOT</title>
+<meta charset="utf-8" />
+
+<link rel="stylesheet" type="text/css" href="javascript/libs/jquery-ui.css" />
+
+<script type="text/javascript" src="javascript/libs/jquery.min.js"></script>
+<script type="text/javascript" src="javascript/libs/jquery-ui.min.js"></script>
+
+<script type="text/javascript" src="javascript/libs/eventemitter2.min.js"></script>
+<script type="text/javascript" src="javascript/libs/mjpegcanvas.min.js"></script>
+<script type="text/javascript" src="javascript/libs/roslib.min.js"></script>
+<script type="text/javascript" src="javascript/libs/keyboardteleop.min.js"></script>
+
+<style type="text/css">
+	div { 
+    	margin:0 auto;
+        text-align: center}
+
+	hr { 
+    	display: block;
+    	margin-top: 0.5em;
+    	margin-bottom: 0.5em;
+    	margin-left: auto;
+    	margin-right: auto;
+    	border-style: inset;
+    	border-width: 2px;}
+</style>
+
+<script type="text/javascript" type="text/javascript">
+  /**
+   * Setup all ROS elements when the page is loaded. 
+   */
+  var ros;
+  var sub;
+  function init() {
+    // Connecting to ROS
+    ros = new ROSLIB.Ros({
+      url : 'ws://192.168.88.1:9090'
+    });
+    ros.on('connection', function() {
+      document.getElementById('connecting').style.display = 'none';
+      document.getElementById('error').style.display = 'none';
+      document.getElementById('closed').style.display = 'none';
+      document.getElementById('connected').style.display = 'inline';
+      console.log('Connected to websocket server.');
+    });
+    ros.on('error', function(error) {
+      document.getElementById('connecting').style.display = 'none';
+      document.getElementById('connected').style.display = 'none';
+      document.getElementById('closed').style.display = 'none';
+      document.getElementById('error').style.display = 'inline';
+      console.log('Error connecting to websocket server: ', error);
+    });
+    ros.on('close', function() {
+      document.getElementById('connecting').style.display = 'none';
+      document.getElementById('connected').style.display = 'none';
+      document.getElementById('closed').style.display = 'inline';
+      console.log('Connection to websocket server closed.');
+    });
+    sub = new ROSLIB.Topic({
+      ros : ros,
+      name : 'csbot_info',
+      messageType : 'std_msgs/String'
+    });
+    // Create the main viewer.
+    
+    var viewer = new MJPEGCANVAS.Viewer({
+      divID : 'mjpeg',
+      host : '192.168.88.1',
+      width : 320,
+      height : 240,
+      quality: 30,
+      topic : '/camera1/image_raw'
+    });
+    
+    // Initialize the teleop.
+    var teleop = new KEYBOARDTELEOP.Teleop({
+      ros : ros,
+      topic : '/cmd_vel'
+    });
+
+    // Create a UI slider using JQuery UI.
+    $('#speed-slider').slider({
+      range : 'min',
+      min : 0,
+      max : 100,
+      value : 20,
+      slide : function(event, ui) {
+        // Change the speed label.
+        $('#speed-label').html('Speed: ' + ui.value + '%');
+        // Scale the speed.
+        teleop.scale = (ui.value / 100.0);
+      }
+    });
+
+    // Set the initial speed .
+    $('#speed-label').html('Speed: ' + ($('#speed-slider').slider('value')) + '%');
+    teleop.scale = ($('#speed-slider').slider('value') / 100.0);
+    
+  }
+
+ function resolve_pkg(pos_l, pos_h){
+   var val = (pos_h.charCodeAt(0) - 48) * 64 + pos_l.charCodeAt(0) - 48;
+   return val;
+ }
+
+ function sensors(){
+   sub.subscribe(function(message){
+     //console.log('Received message on ' + message.data);
+     //console.log(resolve_pkg( message.data[0],message.data[1]));
+     var checksum = 0;
+     var val_0 = resolve_pkg(message.data[0],message.data[1]);
+     checksum += val_0;
+
+     var val_1 = resolve_pkg(message.data[2],message.data[3]);
+     checksum += val_1;
+
+     var val_2 = resolve_pkg(message.data[4],message.data[5]);
+     checksum += val_2;
+
+     var val_3 = resolve_pkg(message.data[6],message.data[7]);
+     checksum += val_3;
+
+     var val_4 = resolve_pkg(message.data[8],message.data[9]);
+     checksum += val_4;
+
+     var val_5 = resolve_pkg(message.data[10],message.data[11]);
+     checksum += val_5;
+
+     var val_6 = resolve_pkg(message.data[12],message.data[13]);
+     checksum += val_6;
+
+     var val_7 = resolve_pkg(message.data[14],message.data[15]);
+     checksum += val_7;
+
+     var val_8 = resolve_pkg(message.data[16],message.data[17]);
+     checksum += val_8;
+
+     var val_9 = resolve_pkg(message.data[18],message.data[19]);
+     checksum += val_9;
+
+     var val_10 = resolve_pkg(message.data[20],message.data[21]);
+     checksum += val_10;
+
+     var val_11 = resolve_pkg(message.data[22],message.data[23]);
+     checksum += val_11;
+
+     var val_12 = resolve_pkg(message.data[24],message.data[25]);
+     checksum += val_12;
+
+     var val_13 = resolve_pkg(message.data[26],message.data[27]);
+     checksum += val_13;
+
+     var val_14 = resolve_pkg(message.data[28],message.data[29]);
+     checksum += val_14;
+
+     var val_15 = resolve_pkg(message.data[30],message.data[31]);
+     checksum += val_15;
+
+     var val_16 = resolve_pkg(message.data[32],message.data[33]);
+     checksum += val_16;
+
+     var val_17 = resolve_pkg(message.data[34],message.data[35]);
+     checksum += val_17;
+
+     var val_18 = resolve_pkg(message.data[36],message.data[37]);
+     checksum += val_18;
+     //console.log(val_18);
+     checksum = 255 - checksum%256;
+     if(checksum != message.data[38].charCodeAt(0)) return;
+
+     document.getElementById("line_0").innerHTML = val_0;
+     document.getElementById("line_1").innerHTML = val_1;
+     document.getElementById("line_2").innerHTML = val_2;
+     document.getElementById("line_3").innerHTML = val_3;
+     document.getElementById("line_4").innerHTML = val_4;
+     document.getElementById("line_5").innerHTML = val_5;
+     document.getElementById("cs_0").innerHTML = val_6;
+     document.getElementById("cs_1").innerHTML = val_7;
+     document.getElementById("cs_2").innerHTML = val_8;
+     document.getElementById("cs_3").innerHTML = val_9;
+     document.getElementById("cs_4").innerHTML = val_10;
+     document.getElementById("cs_5").innerHTML = val_11;
+     document.getElementById("us_left").innerHTML = val_12;
+     document.getElementById("us_centre").innerHTML = val_13;
+     document.getElementById("us_right").innerHTML = val_14;
+     document.getElementById("pose_x").innerHTML = val_15;
+     document.getElementById("pose_y").innerHTML = val_16;
+     document.getElementById("pose_th").innerHTML = val_17;
+     document.getElementById("voltage").innerHTML = val_18/10;
+     sub.unsubscribe();
+   });
+ }
+
+  setInterval('sensors()', 1000); // refresh div after 2 secs
+</script>
+</head>
+
+<body onload="init()">
+  <h1 align="center">CSBOT WEB INTERFACE</h1>
+  <hr>
+  <div id="mjpeg",align="center"></div>
+  <hr>
+  <h2 align="center">SENSOR FEEDBACK</h1>
+  <div id="sensors", align="center">
+  <table align="center",>
+    <tr>
+      <td>POSE(X,Y,TH):</td>
+      <td>[</td>
+      <td id="pose_x"></td>
+      <td>,</td>
+      <td id="pose_y"></td>
+      <td>,</td>
+      <td id="pose_th"></td>
+      <td>]</td>
+    </tr>
+  </table>
+
+  <table align="center",>
+    <tr>
+      <td>ULTASONIC(L,C,R):</td>
+      <td>[</td>
+      <td id="us_left"></td>
+      <td>,</td>
+      <td id="us_centre"></td>
+      <td>,</td>
+      <td id="us_right"></td>
+      <td>]</td>
+    </tr>
+  </table>
+  
+   <table align="center",>
+    <tr>
+      <td>LINE SENSOR:</td>
+      <td>[</td>
+      <td id="line_0"></td>
+      <td>,</td>
+      <td id="line_1"></td>
+      <td>,</td>
+      <td id="line_2"></td>
+      <td>,</td>
+      <td id="line_3"></td>
+      <td>,</td>
+      <td id="line_4"></td>
+      <td>,</td>
+      <td id="line_5"></td>
+      <td>]</td>
+    </tr>
+  </table>
+
+  <table align="center",>
+    <tr>
+      <td>COLOR SENSOR:</td>
+      <td>[</td>
+      <td id="cs_0"></td>
+      <td>,</td>
+      <td id="cs_1"></td>
+      <td>,</td>
+      <td id="cs_2"></td>
+      <td>,</td>
+      <td id="cs_3"></td>
+      <td>,</td>
+      <td id="cs_4"></td>
+      <td>,</td>
+      <td id="cs_5"></td>
+      <td>]</td>
+    </tr>
+  </table>
+
+  <table align="center",>
+    <tr>
+      <td>BATTERY:</td>
+      <td>[</td>
+      <td id="voltage"></td>
+      <td>]</td>
+    </tr>
+  </table>
+  </div>
+  <hr>
+  <h2 align="center">MOTION CONTROL</h1>
+  <div id="speed-label"></div>
+  <div id="speed-slider"></div>
+<hr>
+  <div id="statusIndicator">
+    <p id="connecting">
+      Connecting to rosbridge...
+    </p>
+    <p id="connected" style="color:#00D600; display:none">
+      Connected
+    </p>
+    <p id="error" style="color:#FF0000; display:none">
+      Error in the backend!
+    </p>
+    <p id="closed" style="display:none">
+      Connection closed.
+    </p>
+  </div>
+</body>
+</html>
+
+

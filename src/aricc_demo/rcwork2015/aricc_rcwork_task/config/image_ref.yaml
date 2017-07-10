@@ -1,0 +1,14 @@
+image_references:
+  - {name: 'F20_20_B'     , file: '~/asad_img/F20_20_B.png'}
+  - {name: 'F20_20_G'     , file: '~/asad_img/F20_20_B.png'}
+  - {name: 'S40_40_B'     , file: '~/asad_img/S40_40_B.png'}
+  - {name: 'S40_40_G'     , file: '~/asad_img/S40_40_B.png'}
+  - {name: 'M20'          , file: '~/asad_img/M20.png'}
+  - {name: 'M30'          , file: '~/asad_img/M30.png'}
+  - {name: 'R20'          , file: '~/asad_img/R20.png'}
+  - {name: 'M20_100'      , file: '~/asad_img/M20_100.png'}
+  - {name: 'Axis'         , file: '~/asad_img/Axis.png'}
+  - {name: 'Motor'        , file: '~/asad_img/Motor.png'}
+  - {name: 'Distance Tube', file: '~/asad_img/Distance_Tube.png'}
+  - {name: 'Bearing'      , file: '~/asad_img/Bearing.png'}
+  - {name: 'Bearing Box'  , file: '~/asad_img/Bearing_Box.png'}

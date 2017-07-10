@@ -1,0 +1,1 @@
+KERNEL=="ttyACM[0-9]*", ATTRS{manufacturer}=="Hokuyo Data Flex for USB", ATTRS{product}=="URG-Series USB Driver", MODE="0666", GROUP="dialout", PROGRAM="/home/aricc/ros_ws/src/aricc-ros-pkg/aricc_sensors/hokuyo_driver/udev/hokuyo.sh %N q", SYMLINK+="sensors/hokuyo_%c"

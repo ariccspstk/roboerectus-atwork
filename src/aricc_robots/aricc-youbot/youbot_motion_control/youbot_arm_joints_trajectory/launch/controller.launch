@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<launch>
+  <node pkg="youbot_arm_joints_trajectory" type="youbot_arm_joints_trajectory_controller" name="youbot_arm_joints_trajectory_controller" output="screen">
+  <rosparam command="load" file="$(find aricc_rcwork_task)/config/arm_trajectory.yaml"/>
+  </node>
+
+  <node pkg="rqt_gui" type="rqt_gui" name="rqt_gui" />
+
+</launch>
+

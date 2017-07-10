@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<launch>
+  <node pkg="youbot_base_local_move" type="youbot_base_local_move_server" name="youbot_base_local_move_server" output="screen">
+    <rosparam command="load" file="$(find youbot_base_local_move)/config/params.yaml"/>
+    <param name="vx_max"    type="double" value="0.3"/>
+    <param name="vy_max"    type="double" value="0.3"/>
+    <param name="vth_max"   type="double" value="0.2"/>
+    <remap from="cmd_vel" to="cmd_vel_local_move"/>
+   </node>
+</launch>
+

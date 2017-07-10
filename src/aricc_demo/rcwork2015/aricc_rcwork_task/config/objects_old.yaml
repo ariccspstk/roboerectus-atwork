@@ -1,0 +1,218 @@
+objects:
+  - { name: 'M30', 
+      width: '0.048', 
+      height: '0.053', 
+      color_h: '26', 
+      color_s: '7', 
+      color_v: '35', 
+      density: '61'}
+
+  - { name: 'F20_20_G', 
+      width: '0.024', 
+      height: '0.098', 
+      color_h: '53', 
+      color_s: '13', 
+      color_v: '113', 
+      density: '67'} 
+
+  - { name: 'Motor', 
+      width: '0.045', 
+      height: '0.085', 
+      color_h: '21', 
+      color_s: '6', 
+      color_v: '29', 
+      density: '55'}
+
+  - { name: 'Distance Tube', 
+      width: '0.029', 
+      height: '0.032', 
+      color_h: '56', 
+      color_s: '13', 
+      color_v: '111', 
+      density: '51'}
+
+  - { name: 'R20', 
+      width: '0.033', 
+      height: '0.053', 
+      color_h: '23', 
+      color_s: '7', 
+      color_v: '25', 
+      density: '78'}
+  
+  - { name: 'F20_20_B', 
+      width: '0.022', 
+      height: '0.095', 
+      color_h: '29', 
+      color_s: '8', 
+      color_v: '29', 
+      density: '83'}
+
+  - { name: 'S40_40_B', 
+      width: '0.049', 
+      height: '0.111', 
+      color_h: '34', 
+      color_s: '8', 
+      color_v: '28', 
+      density: '45'} 
+
+  - { name: 'S40_40_G', 
+      width: '0.050', 
+      height: '0.111', 
+      color_h: '54', 
+      color_s: '16', 
+      color_v: '126', 
+      density: '58'} 
+
+#  - { name: 'M20_100', 
+#      width: '0.033', 
+#      height: '0.114', 
+#      color_h: '26', 
+#      color_s: '5', 
+#      color_v: '41', 
+#      density: '68'} 
+
+#real M20
+  - { name: 'M20', 
+      width: '0.032', 
+      height: '0.035', 
+      color_h: '41', 
+      color_s: '10', 
+      color_v: '37', 
+      density: '128'}
+
+#fake M20
+#  - { name: 'M20', 
+#      width: '1', 
+#      height: '1', 
+#      color_h: '32', 
+#      color_s: '5', 
+#      color_v: '88', 
+#      density: '160'}
+
+  - { name: 'Axis', 
+      width: '0.012', 
+      height: '0.060', 
+      color_h: '56', 
+      color_s: '16', 
+      color_v: '91', 
+      density: '104'}
+
+#real Bearing
+  - { name: 'Bearing', 
+      width: '0.029', 
+      height: '0.031', 
+      color_h: '54', 
+      color_s: '13', 
+      color_v: '62', 
+      density: '112'}
+
+#fake Bearing
+#  - { name: 'Bearing', 
+#      width: '0.033', 
+#      height: '0.036', 
+#     color_h: '32', 
+#      color_s: '5', 
+#      color_v: '88', 
+#      density: '160'}
+
+  - { name: 'Bearing Box', 
+      width: '0.044', 
+      height: '0.053', 
+      color_h: '59', 
+      color_s: '21', 
+      color_v: '86', 
+      density: '59'}
+  
+red_container:
+  - { name: 'Red Container', 
+      width: '0.153', 
+      height: '0.153', 
+      color_h: '164', 
+      color_s: '209', 
+      color_v: '157', 
+      density: '234'} 
+
+blue_container:  
+  - { name: 'Blue Container', 
+      width: '0.153', 
+      height: '0.162', 
+      color_h: '105', 
+      color_s: '207', 
+      color_v: '104', 
+      density: '246'} 
+
+empty_table:
+  - { name: 'Table', 
+      width: '0.12', 
+      height: '0.16', 
+      color_h: '49', 
+      color_s: '9', 
+      color_v: '138', 
+      density: '239'} 
+
+
+holes:
+  - { name: 'F20_20', 
+      width: '0.028', 
+      height: '0.105', 
+      color_h: '160', 
+      color_s: '160', 
+      color_v: '160', 
+      density: '220'}
+
+  - { name: 'S40_40',   
+      width: '0.044', 
+      height: '0.106', 
+      color_h: '160',
+      color_s: '160',
+      color_v: '160',
+      density: '220'}
+
+  - { name: 'M20',      
+      width: '0.038', 
+      height: '0.048', 
+      color_h: '160',
+      color_s: '160',
+      color_v: '160',
+      density: '220'}
+  
+  - { name: 'M30',
+      width: '0.052', 
+      height: '0.061', 
+      color_h: '160',
+      color_s: '160',
+      color_v: '160',
+      density: '220'}
+
+  - { name: 'R20',      
+      width: '0.034', 
+      height: '0.053', 
+      color_h: '160',
+      color_s: '160',
+      color_v: '160',
+      density: '220'}
+
+#  - { name: 'M20_100',  
+#      width: '0.050', 
+#      height: '0.122',
+#      color_h: '160',
+#      color_s: '160',
+#      color_v: '160',
+#      density: '220'} 
+
+#  - { name: 'M20_100',  
+#      width: '0.047', 
+#      height: '0.107', 
+#      color_h: '160',
+#      color_s: '160',
+#      color_v: '160',
+#      density: '220'}
+
+#  - { name: 'V20',      
+#      width: '0.046', 
+#      height: '0.060', 
+#      color_h: '160',
+#      color_s: '160',
+#      color_v: '160',
+#      density: '220'}
+

@@ -1,0 +1,10 @@
+plans:
+  - {place: 'S1', action: 'PICKUP_TABLE', objects: ['F20_20_B'], pause: '0', dir: 'UNKNOWN' }
+  - {place: 'S3', action: 'PICKUP_TABLE', objects: ['F20_20_B','R20'], pause: '0', dir: 'UNKNOWN' }
+  - {place: 'S2', action: 'PLACE_HOLE', objects: ['F20_20_B'], pause: '0', dir: 'UNKNOWN' }
+  - {place: 'S3', action: 'PLACE_TABLE', objects: ['F20_20_B','R20'], pause: '0', dir: 'UNKNOWN' }
+#  - {place: 'S2', action: 'PLACE_HOLE', objects: ['F20_20_B'], pause: '0', dir: 'UNKNOWN' }
+#  - {place: 'S1', action: 'PLACE_TABLE', objects: ['F20_20_B'], pause: '0', dir: 'UNKNOWN' }
+#  - {place: 'S2', action: 'PLACE_HOLE', objects: ['M20', 'R20'], pause: '3', dir: 'UNKNOWN' }
+  #- {place: 'S3', action: 'EXIT', objects: [], pause: '3', dir: 'W' }
+  - {place: 'E1', action: 'EXIT', objects: [], pause: '0', dir: 'UNKNOWN' }

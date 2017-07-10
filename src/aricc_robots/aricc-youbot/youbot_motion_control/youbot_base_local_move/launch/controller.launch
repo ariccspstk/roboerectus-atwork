@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<launch>
+  <node pkg="youbot_base_local_move" type="youbot_base_local_move_controller" name="youbot_base_local_move_controller" output="screen">
+    <param name="rate"  type="int"    value="20"/>
+    <param name="x"     type="double" value="-0.05"/>
+    <param name="y"     type="double" value="0.0"/>
+    <param name="theta" type="double" value="0"/>
+
+  </node>
+
+  <!--node pkg="rqt_gui" type="rqt_gui" name="rqt_gui" /-->
+
+</launch>
+

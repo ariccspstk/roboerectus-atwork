@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+
+  <!-- ##################Device Drivers############### -->
+  <!-- softkinetic driver -->
+  <include file="$(find youbot_bringup)/launch/softkinetics.launch"/>
+  <!-- asad vision nodelet -->
+  <include file="$(find youbot_bringup)/launch/asad_vision.launch"/>
+</launch>

@@ -1,0 +1,346 @@
+#include <ros/ros.h>
+#include <dynamic_reconfigure/server.h>
+#include <actionlib/server/simple_action_server.h>
+#include <actionlib/client/simple_action_client.h>
+#include <youbot_base_alignment/BaseAction.h>
+#include <youbot_base_local_move/BaseAction.h>
+#include <youbot_base_alignment/ServerConfig.h>
+#include <geometry_msgs/Pose2D.h>
+#include <sensor_msgs/LaserScan.h>
+#include <tf/transform_broadcaster.h>
+#include <aricc_utils/geometry_utils.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string>
+#include <utility>
+#include <iostream>
+#include <assert.h>
+
+class BaseAction{
+
+public:
+  typedef actionlib::SimpleActionClient<youbot_base_local_move::BaseAction> 
+    ActionClient;
+  typedef youbot_base_alignment::ServerConfig Config;
+  enum StateEnum { ACTIVE = 0, SUCCEEDED, ABORTED };
+  enum TaskEnum {kAdjustAngle = 10, kAdjustDist};
+
+protected:
+  ros::NodeHandle nh_, pnh_;
+  actionlib::SimpleActionServer
+    <youbot_base_alignment::BaseAction> action_;
+  std::string action_name_;
+  boost::shared_ptr<dynamic_reconfigure::Server<Config> > srv_;
+  boost::shared_ptr<ActionClient> client_;
+  
+  double rate_;
+  boost::mutex mutex_;
+  bool laser_received_;
+  std::string laser_topic_name_;
+  TaskEnum task_state_;
+
+  double l_dist_, r_dist_, f_dist_;
+  double l_angle_, r_angle_, f_angle_;
+  double align_dist_;
+  bool is_sent_goal_;
+  double timeout_;
+  
+  youbot_base_alignment::BaseFeedback feedback_;
+  youbot_base_alignment::BaseResult result_;
+ 
+  ros::Subscriber sub_;
+  ros::Time time_now_, time_start_; 
+ 
+public:
+  BaseAction(std::string name) :
+    pnh_("~"), laser_received_(false),is_sent_goal_(false), 
+    task_state_(kAdjustAngle),
+    action_(nh_, name, boost::bind(&BaseAction::executeCB, this, _1), false),
+    action_name_(name){
+    ROS_INFO("----------"); 
+    srv_ = boost::make_shared <dynamic_reconfigure::Server<Config> > (pnh_);
+    dynamic_reconfigure::Server<Config>::CallbackType f =
+      boost::bind (&BaseAction::configCallback, this, _1, _2);
+    srv_->setCallback(f);
+
+    pnh_.param<double>("rate", rate_, 20.0);
+    pnh_.param<double>("l_angle", l_angle_, 15);
+    pnh_.param<double>("f_angle", f_angle_, 0.0);
+    pnh_.param<double>("r_angle", r_angle_, -15);
+    l_angle_ = aricc_utils::deg2Rad(l_angle_);
+    f_angle_ = aricc_utils::deg2Rad(f_angle_);
+    r_angle_ = aricc_utils::deg2Rad(r_angle_);
+    
+    pnh_.param<std::string>("laser_topic_name", laser_topic_name_, "base_scan");
+    client_.reset( new ActionClient("youbot_base_local_move_server", true) );
+    while(!client_->waitForServer(ros::Duration(5.0))){
+      ROS_ERROR("waiting for youbot_base_local_move actionlib");
+    }
+    action_.start();
+    ROS_INFO("Starting %s ...", name.c_str());
+  }
+
+  ~BaseAction(void){
+    sub_.shutdown();
+  }
+
+  void subscribe(){
+    sub_ = nh_.subscribe( laser_topic_name_  ,1, &BaseAction::laserCB,this);
+  }
+
+  void unsubscribe(){
+    sub_.shutdown();
+  }
+
+  void configCallback(Config &config, uint32_t level){
+    boost::mutex::scoped_lock lock(mutex_);
+    l_angle_    = aricc_utils::deg2Rad(config.l_angle);
+    f_angle_    = aricc_utils::deg2Rad(config.f_angle);
+    r_angle_    = aricc_utils::deg2Rad(config.r_angle);
+    align_dist_ = config.align_dist; 
+  }
+
+  void laserCB(const sensor_msgs::LaserScan::ConstPtr& msg){
+    boost::mutex::scoped_lock lock(mutex_);
+    if( getDist(*msg, l_angle_, l_dist_) &&
+        getDist(*msg, r_angle_, r_dist_) &&
+        getDist(*msg, f_angle_, f_dist_) ) {
+      laser_received_ = true;
+      //ROS_INFO("l:(%.3lf,%.3lf), f:(%.3lf,%.3lf), r:(%.3lf,%.3lf)",
+      //  l_angle_,l_dist_, f_angle_,f_dist_,r_angle_,r_dist_);
+    }
+  }
+
+  bool getDist(sensor_msgs::LaserScan reading, double angle,
+    double& dist, unsigned int beam = 3){
+
+    double r_min = static_cast<double>(reading.range_min);
+    double r_max = static_cast<double>(reading.range_max);
+ 
+    if( angle < reading.angle_min || angle > reading.angle_max ) {
+      ROS_WARN("Index is out of range");
+      return false;
+    }
+
+    //Get distance from the center of laser
+    double res = 0.0;
+    unsigned int cnt = 0;
+    unsigned int index = static_cast<unsigned int>
+      ( (angle - reading.angle_min)/reading.angle_increment );
+    for(unsigned int i = 0; i < beam; ++i){
+      double scan = reading.ranges[i+index];
+      if( scan > r_max || scan < r_min || 
+          isinf(scan) || isnan(scan)) continue;
+      res += scan; cnt++;
+    }
+    if( cnt != beam ) return false;
+    dist = static_cast<double>(res/cnt);
+  }
+  
+  StateEnum stopBase(){
+    geometry_msgs::Pose2D pose;
+    pose.x = 0.0;
+    pose.y = 0.0;
+    pose.theta = 0.0;
+    youbot_base_local_move::BaseGoal goal;
+    goal.timeout = 60;
+    goal.destination = pose;
+    client_->sendGoal(goal);
+    client_->waitForResult(ros::Duration(0.5));
+    if( client_->getState().toString() == "SUCCEEDED" ){
+      is_sent_goal_ = false;
+      return SUCCEEDED;
+    }
+    else if( client_->getState().toString() == "ABORTED" ){
+      is_sent_goal_ = false;
+      return ABORTED;
+    }
+  }
+
+  StateEnum moveBase(geometry_msgs::Pose2D pose){
+    if(!is_sent_goal_){
+      youbot_base_local_move::BaseGoal goal;
+      goal.timeout = timeout_/2;
+      goal.destination = pose;
+      client_->sendGoal(goal);
+      is_sent_goal_ = true;
+      return ACTIVE;
+    }
+    if( client_->getState().toString() == "SUCCEEDED" ){ 
+      is_sent_goal_ = false;   
+      return SUCCEEDED;
+    }
+    else if( client_->getState().toString() == "ABORTED" ){ 
+      is_sent_goal_ = false;
+      return ABORTED; 
+    }
+    else return ACTIVE; 
+ 
+  }
+
+  double calAdjustAngle(){
+    double diff = fabs(l_dist_ - r_dist_);
+    double dist_1 = fabs(l_dist_*sin(l_angle_)) + 
+      fabs(r_dist_*sin(r_angle_));
+    double dist_2 = fabs(l_dist_*cos(l_angle_)) - 
+      fabs(r_dist_*cos(r_angle_));
+    double angle = atan(dist_2/dist_1);
+    //ROS_INFO("Angle:(%.3lf,%.3lf)",angle, aricc_utils::rad2Deg(angle));
+    return angle;
+  }
+
+  double calAdjustDist(){
+    double dist = fabs( f_dist_ - align_dist_ );
+    return dist;
+  }
+
+  StateEnum adjustAngle(){
+    boost::mutex::scoped_lock lock(mutex_);
+    if(!laser_received_){
+      ROS_DEBUG("%s: Cannot receive laser state ", action_name_.c_str());
+      return ACTIVE;
+    }
+    laser_received_ = false;
+
+    geometry_msgs::Pose2D goal;
+    double angle = calAdjustAngle();
+    if(isnan(angle) || isinf(angle)) return ABORTED; 
+    goal.x = 0.0;
+    goal.y = 0.0;
+    goal.theta = -angle;
+    StateEnum state = moveBase(goal);
+    //ROS_INFO("Adjusting angle, state:%d", state);
+    return state; 
+  }
+
+  StateEnum adjustDist(){
+    boost::mutex::scoped_lock lock(mutex_);
+    if(!laser_received_){
+      ROS_DEBUG("%s: Cannot receive laser state ", action_name_.c_str());
+      return ACTIVE;
+    }
+    laser_received_ = false;
+
+    geometry_msgs::Pose2D goal;
+    double dist = calAdjustDist();
+    if(isnan(dist) || isinf(dist)) return ABORTED; 
+    goal.x = dist;
+    goal.y = 0.0;
+    goal.theta = 0.0;
+    StateEnum state = moveBase(goal);
+    //ROS_INFO("Adjusting dist, state:%d", state);
+    return state;
+  }
+
+  StateEnum taskStep(){
+    StateEnum state;
+    switch(task_state_){
+      case kAdjustAngle:
+        state = adjustAngle();
+        if(state == SUCCEEDED) task_state_ = kAdjustDist;
+        else if(state == ABORTED) return ABORTED;
+      break;
+      
+      case kAdjustDist:
+        state = adjustDist();
+        if(state == SUCCEEDED) return SUCCEEDED;
+        else if(state == ABORTED) return ABORTED;
+      break;
+    }
+    return ACTIVE;
+  }
+
+  void resetState(){
+    stopBase();
+    laser_received_ = false;
+    is_sent_goal_ = false;
+    time_start_ = ros::Time::now();
+    task_state_ = kAdjustAngle;
+    client_->cancelAllGoals();
+    unsubscribe();
+  }
+
+  int isGoalValid( youbot_base_alignment::BaseGoal goal){
+    ROS_INFO("%s: accept goal", action_name_.c_str());
+    if( isnan(goal.timeout) || isinf(goal.timeout) ||
+        isnan(goal.distance) || isinf(goal.distance)){
+      ROS_WARN("Goal has NAN item");
+      return 0;
+    }
+    ROS_INFO("Goal: %.3lf",goal.timeout);
+    timeout_ = goal.timeout;
+    align_dist_ = goal.distance;
+    return 1;
+  }
+
+  void setAborted(youbot_base_alignment::BaseResult result, 
+    std::string str = ""){
+    ROS_ERROR("%s: Aborted, %s", action_name_.c_str(), str.c_str());
+    action_.setAborted(result);
+    resetState();
+  }
+
+  void setSucceeded(youbot_base_alignment::BaseResult result){
+    ROS_INFO("%s: Succeeded, take %.3lf s", action_name_.c_str(),
+      (time_now_ - time_start_).toSec());
+    action_.setSucceeded(result);
+    resetState();
+  }
+
+  void setPreempted(){
+    ROS_WARN("%s: Preempted", action_name_.c_str());
+    action_.setPreempted();
+    resetState();
+  }
+
+  void executeCB(const youbot_base_alignment::BaseGoalConstPtr &goal_msg){
+    youbot_base_alignment::BaseGoal goal = *goal_msg;
+    resetState();
+
+    if( isGoalValid(goal) == 0 ){
+      setAborted(result_,"Goal is invalid");
+      return;
+    }
+    ros::Rate r(rate_);
+    
+    while(action_.isActive() || ros::ok()){
+      subscribe();
+      time_now_ = ros::Time::now(); 
+      if( (time_now_ - time_start_).toSec() >= goal.timeout && 
+        goal.timeout != 0.0 ){
+        setAborted(result_, "Timeout");
+        return;
+      }
+
+      if( action_.isPreemptRequested() ){
+        if( action_.isNewGoalAvailable() ){
+          goal = *(action_.acceptNewGoal());
+          if( isGoalValid(goal) == 0 ){
+            action_.setAborted(result_, "Goal is invalid");
+            return;
+          }
+          else {
+            ROS_INFO("%s: accept new goal", action_name_.c_str());
+            resetState();
+          }
+        }
+        else{ setPreempted(); return; }
+      }
+      //control loop
+      StateEnum state = taskStep();
+      if( state == SUCCEEDED ) { setSucceeded(result_); return; }
+      else if( state == ABORTED ) { setAborted(result_); return; }
+      r.sleep();
+      if( r.cycleTime() > ros::Duration(1.0/rate_) )
+        ROS_WARN("%s: Control desired rate of %.3lfHz... the loop actually took %.4lf seconds", action_name_.c_str(), rate_, r.cycleTime().toSec());
+    }
+  }
+};
+
+int main(int argc, char **argv) {
+  ros::init(argc, argv, "youbot_base_alignment_server");
+  BaseAction action(ros::this_node::getName());
+  ros::spin();
+  return 0;
+}

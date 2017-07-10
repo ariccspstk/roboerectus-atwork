@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<launch>
+  <node pkg="youbot_base_alignment" type="youbot_base_alignment_controller" name="youbot_base_alignment_controller" output="screen">
+    <param name="dist" type="double" value="0.05"/>
+  </node>
+
+  <!--node pkg="rqt_gui" type="rqt_gui" name="rqt_gui" /-->
+
+</launch>
+

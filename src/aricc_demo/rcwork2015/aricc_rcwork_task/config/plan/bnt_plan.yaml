@@ -1,0 +1,9 @@
+plans:
+  - {place: 'S1', action: 'EXIT', objects: [], pause: '2', dir: 'UNKNOWN' }
+  - {place: 'S4', action: 'EXIT', objects: [], pause: '2', dir: 'UNKNOWN' }
+  - {place: 'S3', action: 'EXIT', objects: [], pause: '2', dir: 'UNKNOWN' }
+  - {place: 'S4', action: 'EXIT', objects: [], pause: '2', dir: 'UNKNOWN' }
+  - {place: 'S2', action: 'EXIT', objects: [], pause: '2', dir: 'UNKNOWN' }
+  - {place: 'S1', action: 'EXIT', objects: [], pause: '2', dir: 'UNKNOWN' }
+#  - {place: 'S3', action: 'EXIT', objects: [], pause: '2', dir: 'UNKNOWN' }
+  - {place: 'E1', action: 'EXIT', objects: [], pause: '0', dir: 'UNKNOWN' }

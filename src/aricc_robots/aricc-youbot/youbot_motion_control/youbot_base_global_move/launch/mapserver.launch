@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+
+<launch>
+  <!-- optional: specify map -->
+  <!--arg name="map" value="map_draw" /-->
+  <!--arg name="map" value="6J2017ARICC2(edited)" /-->
+ <!-- <arg name="map" value="map" />-->
+  <arg name="map" value="testmap3" />
+  <node name="map_server" pkg="map_server" type="map_server" args="$(find youbot_base_global_move)/maps/$(arg map).yaml" output="screen" />
+
+</launch>

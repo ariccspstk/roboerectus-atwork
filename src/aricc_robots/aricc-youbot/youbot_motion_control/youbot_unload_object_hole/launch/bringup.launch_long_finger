@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<launch>
+  <node pkg="youbot_unload_object_hole" type="youbot_unload_object_hole_server" name="youbot_unload_object_hole_server" output="screen">
+    <rosparam command="load" file="$(find aricc_rcwork_task)/config/arm_joints.yaml" />
+    <param name="rate"         type="int"    value="20"/>
+    <param name="scan_dist"    type="double" value="0.40"/>
+    <param name="offset_x"     type="double" value="0.22"/>
+    <param name="offset_y"     type="double" value="0.028"/>
+    <param name="offset_z"     type="double" value="0.045"/>
+    <param name="offset_roll"  type="double" value="0"/> <!-- in degree -->
+    <param name="hole_topic"   type="string" value="/youbot_hole_detection/ObjectDetection/output"/>
+    <param name="odom_topic"   type="string" value="odom"/>
+   </node>
+</launch>
+

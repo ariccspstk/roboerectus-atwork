@@ -1,0 +1,7 @@
+#goal
+float64 timeout  #in second
+float64 distance #in meter
+---
+#result
+---
+#feedback

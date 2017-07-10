@@ -1,0 +1,11 @@
+<library path="lib/libaricc_laser_pipeline">
+
+  <class name="aricc_laser_pipeline/GetBeamDist" 
+         type="aricc_laser_pipeline::GetBeamDist" 
+         base_class_type="nodelet::Nodelet">
+  <description>
+    get beams distance based on angle
+  </description>
+  </class>
+
+</library>

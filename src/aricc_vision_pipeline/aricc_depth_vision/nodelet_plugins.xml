@@ -1,0 +1,18 @@
+<library path="lib/libaricc_depth_vision">
+  <class name="aricc_depth_vision/DepthRegister"
+	 type="aricc_depth_vision::DepthRegister"
+	 base_class_type="nodelet::Nodelet">
+    <description>
+      Nodelet to create a depth image registered to another camera frame.
+    </description>
+  </class>
+
+  <class name="aricc_depth_vision/DepthToGrayImage"
+	 type="aricc_depth_vision::DepthToGrayImage"
+	 base_class_type="nodelet::Nodelet">
+    <description>
+      Nodelet to create a gray image fro depth image.
+    </description>
+  </class>
+
+</library>

@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<launch>
+  <include file="$(find youbot_base_global_move)/launch/move_base.launch" />
+  <node pkg="youbot_base_global_move" type="youbot_base_global_move_server" name="youbot_base_global_move_server" output="screen">
+  </node>
+</launch>
+

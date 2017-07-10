@@ -1,0 +1,6 @@
+# list the topics based on priority (lowest first)
+twist_mux_topics: [cmd_vel_align_dock,cmd_vel_alignment, cmd_vel_local_move, cmd_vel_move_base, cmd_vel_teleop]
+
+# time for which lower priority topics are ignored if something of higher priority is published
+hold_off_time: 1.0
+topic_out_name: cmd_vel_mux

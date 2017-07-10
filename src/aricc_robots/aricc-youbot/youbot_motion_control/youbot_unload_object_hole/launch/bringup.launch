@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<launch>
+  <node pkg="youbot_unload_object_hole" type="youbot_unload_object_hole_server" name="youbot_unload_object_hole_server" output="screen">
+    <rosparam command="load" file="$(find aricc_rcwork_task)/config/arm_joints.yaml" />
+    <rosparam command="load" file="$(find aricc_rcwork_task)/config/stations.yaml" />
+    <rosparam command="load" file="$(find aricc_rcwork_task)/config/arm_trajectory.yaml" />
+    <param name="rate"         type="int"    value="20"/>
+    <param name="scan_dist"    type="double" value="0.45"/>
+    <param name="robot_width"  type="double" value="0.46"/>
+    <param name="object_topic"   type="string" value="/youbot_hole_detection/ObjectDetection/output"/>
+    <param name="odom_topic"   type="string" value="odom"/>
+    <param name="object_topic" type="string" value="/youbot_hole_detection/ObjectDetection/output"/>
+    <param name="beam_topic" type="string" value="/youbot_laser_pipeline/GetBeamDist/output"/>
+    <param name="table_param_namespace" type="string" value="/youbot_hole_detection/RotatedRectFinder/"/>
+    <param name="param_name" type="string" value="z"/>
+   </node>
+</launch>
+

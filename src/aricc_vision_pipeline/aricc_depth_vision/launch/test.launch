@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="nodelet_manager" default="aricc_depth_vision_nodelet"/>
+  <arg name="rgb_image" default="/softkinetic_camera/rgb/image"/>
+  <arg name="depth_image" default="/softkinetic_camera/depth/image"/>
+  <arg name="rgb_camera_info" default="/softkinetic_camera/rgb/camera_info"/>
+  <arg name="depth_camera_info" default="/softkinetic_camera/depth/camera_info"/>
+
+  <include file="$(find softkinetic_camera)/launch/ds325.launch" />
+  
+  <node pkg="nodelet" type="nodelet" name="$(arg nodelet_manager)" args="manager" output="screen"/>
+  
+  <node pkg="nodelet" type="nodelet" name="DepthRegister"
+        args="load aricc_depth_vision/DepthRegister $(arg nodelet_manager)">
+    <remap from="~input" to="$(arg depth_image)" />
+    <remap from="~input/depth_camera_info" to="$(arg depth_camera_info)" />
+    <remap from="~input/rgb_camera_info" to="$(arg rgb_camera_info)" />
+    <rosparam>
+      approximate_sync: true
+      queue_size: 5
+    </rosparam>
+  </node>
+  <node pkg="nodelet" type="nodelet" name="DepthToGrayImage"
+        args="load aricc_depth_vision/DepthToGrayImage $(arg nodelet_manager)">
+    <remap from="~input" to="DepthRegister/output" />
+    <rosparam>
+    </rosparam>
+  </node>
+  
+  <node pkg="rqt_reconfigure" type="rqt_reconfigure" name="rqt_reconfigure" />
+</launch>

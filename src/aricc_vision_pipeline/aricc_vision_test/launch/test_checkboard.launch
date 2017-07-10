@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="nodelet_manager" default="aricc_nodelet_manager"/>
+  <arg name="rgb_image" default="/softkinetics_camera_ros/rgb/image"/>
+  <arg name="depth_image" default="/softkinetics_camera_ros/depth/image"/>
+  <arg name="rgb_camera_info" default="/softkinetics_camera_ros/rgb/camera_info"/>
+  <arg name="depth_camera_info" default="/softkinetics_camera_ros/depth/camera_info"/>
+  
+  <include file="$(find softkinetics_camera_ros)/launch/softkinetics.launch" />
+
+  <node pkg="nodelet" type="nodelet" name="$(arg nodelet_manager)" args="manager" output="screen"/>
+
+  <node pkg="nodelet" type="nodelet" name="CheckBoardDetector"
+        args="load aricc_2d_vision/CheckBoardDetector $(arg nodelet_manager)">
+    <remap from="~input" to="$(arg rgb_image)" />
+    <remap from="~input/camera_info" to="$(arg rgb_camera_info)" />
+    <rosparam>
+      approximate_sync: true
+      debug: true
+      invert_color: false
+      use_p: false
+      board_type: chess
+      camera_link: base_camera_link
+      max_board: 1
+      columns: 6
+      rows: 4
+      rect_size_cols: 0.020
+      rect_size_rows: 0.020
+      border_thresh: 30
+    </rosparam>
+  </node>
+
+  <node pkg="rqt_gui" type="rqt_gui" name="rqt_gui" />
+</launch>
+

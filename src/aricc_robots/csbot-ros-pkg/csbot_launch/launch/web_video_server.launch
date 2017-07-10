@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+
+<launch>
+ <node pkg="web_video_server" type="web_video_server" name="web_video_server"  output="screen">
+    <param name="port" type="int" value="8080" />
+  </node>
+</launch>
+

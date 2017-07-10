@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+    <!--node pkg="aricc_lowpass_controller" type="aricc_lowpass_controller" name="aricc_lowpass_controller" output="screen">i
+    <param name="rate" value="20.0" type="double" />
+    <param name="t"    value="0.2"  type="double" />
+    <param name="dt"   value="0.1"  type="double" />
+    <param name="pub_topic" value="cmd_vel_move_base" type="string" />
+    <param name="sub_topic" value="cmd_vel_move_base" type="string" />
+   </node-->
+	
+    <node pkg="move_base" type="move_base" respawn="false" name="move_base_node" output="screen">
+        <!-- mux joy and navigation velocity command -->
+	<!--remap from="cmd_vel" to="/cmd_vel_nav"/--> 
+	<remap from="cmd_vel" to="/cmd_vel_move_base"/> 
+
+        <!-- Load common configuration files -->
+	<param name="base_local_planner" value="mdp_base_local_planner/TrajectoryPlannerROS" />
+	<!--param name="base_local_planner" value="aricc_base_local_planner/TrajectoryPlannerROS" /-->
+	<!--param name="base_local_planner" value="dwa_local_planner/DWAPlannerROS" /-->
+        <rosparam file="$(find youbot_base_global_move)/config/config_common/base_local_planner_params.yaml" command="load" />
+        <rosparam file="$(find youbot_base_global_move)/config/config_common/move_base_params.yaml" command="load" />
+        <rosparam file="$(find youbot_base_global_move)/config/config_common/recovery_behaviors.yaml" command="load" />
+        
+        <!-- the belows are costmap parameters -->
+        <rosparam file="$(find youbot_base_global_move)/config/config_common/costmap_common_params.yaml" command="load" ns="global_costmap" />
+        <rosparam file="$(find youbot_base_global_move)/config/config_common/costmap_common_params.yaml" command="load" ns="local_costmap" />
+        <!-- Load global navigation specific parameters -->
+        <rosparam file="$(find youbot_base_global_move)/config/config_global/local_costmap_params.yaml" command="load" />
+        <rosparam file="$(find youbot_base_global_move)/config/config_global/global_costmap_params.yaml" command="load" />
+    </node>
+</launch>

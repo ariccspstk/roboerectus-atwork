@@ -1,0 +1,145 @@
+#if (ARDUINO >= 100)
+ #include <Arduino.h>
+#else
+ #include <WProgram.h>
+#endif
+
+#include <ros.h>
+#include <std_msgs/Empty.h>
+#include <Servo.h>
+#include <RunningMedian.h>
+
+#define OPEN_MS 1320
+#define CLOSE_MS 880
+#define DURATION 500 //ms
+
+#define PIN_TOUCH_LEFT A0
+#define PIN_TOUCH_RIGHT A1
+
+#define TOUCH_LEFT_TOL 50
+#define TOUCH_RIGHT_TOL 50
+
+ros::NodeHandle nh_;
+RunningMedian touch_left_reading_ = RunningMedian(10);
+RunningMedian touch_right_reading_ = RunningMedian(10);
+Servo myservo;
+unsigned int current_pos_ = 0;
+
+double touch_left_zero_, touch_right_zero_;
+
+void open_cb(const std_msgs::Empty& msg){
+  openGripper();
+}
+
+void close_cb(const std_msgs::Empty& msg){
+  closeGripper();
+}
+
+ros::Subscriber<std_msgs::Empty> sub_open_("gripper_open", open_cb);
+ros::Subscriber<std_msgs::Empty> sub_close_("gripper_close", close_cb);
+
+std_msgs::Empty msg_;
+ros::Publisher pub_("gripper_ready", &msg_);
+
+void openGripper(){
+  unsigned long delay_time = (unsigned long)DURATION/(OPEN_MS - CLOSE_MS);
+  /*
+  Serial.print("Delay Time:");
+  Serial.println(delay_time);
+  Serial.println("Opening");*/
+  unsigned int i = 0;
+  for(i = current_pos_; i < OPEN_MS; ++i){
+    myservo.writeMicroseconds(i);
+    delay(delay_time);
+    }
+    current_pos_ = i;
+  pub_.publish( &msg_ );
+}
+
+void closeGripper(){
+  unsigned long delay_time = (unsigned long)DURATION/(OPEN_MS - CLOSE_MS);
+  /*
+  Serial.print("Delay Time:");
+  Serial.println(delay_time);
+  Serial.println("Closing");*/
+  unsigned int i = 0;
+  for( i = OPEN_MS; i > CLOSE_MS; --i){
+    myservo.writeMicroseconds(i);
+    delay(delay_time);
+    //if(closeEnough()) break;
+    }
+    current_pos_ = i;
+    //Serial.println("Close tight enough!!!");
+    //delay(5000);
+  pub_.publish( &msg_ );
+}
+
+void initTouchSensor(double& touch_left_zero, double& touch_right_zero){
+  for(unsigned int i = 0; i < 10; ++i){
+    double touch_left = analogRead(PIN_TOUCH_LEFT);
+    double touch_right = analogRead(PIN_TOUCH_RIGHT);
+    touch_left_reading_.add(touch_left);
+    touch_right_reading_.add(touch_right);
+    }
+    touch_left_zero = touch_left_reading_.getMedian();
+    touch_right_zero = touch_right_reading_.getMedian();
+    /*
+    Serial.print("TouchSensor Zero:");
+    Serial.print(touch_left_zero);
+    Serial.print(",");
+    Serial.println(touch_right_zero);
+    */
+  }
+
+bool closeEnough(){
+  double touch_left = analogRead(PIN_TOUCH_LEFT);
+  double touch_right = analogRead(PIN_TOUCH_RIGHT);
+  /*
+  Serial.print("TouchSensor Raw:");
+  Serial.print(touch_left);
+  Serial.print(",");
+  Serial.println(touch_right);
+  */
+
+  touch_left_reading_.add(touch_left);
+  touch_right_reading_.add(touch_right); 
+  touch_left = touch_left_reading_.getMedian();
+  touch_right = touch_right_reading_.getMedian();
+
+  /*
+  Serial.print("TouchSensor:");
+  Serial.print(touch_left);
+  Serial.print(",");
+  Serial.println(touch_right);
+  */
+
+  double diff_left  = touch_left - touch_left_zero_;
+  double diff_right = touch_right - touch_right_zero_;
+  if(diff_left >= TOUCH_LEFT_TOL || diff_right >= TOUCH_RIGHT_TOL)
+    return true;
+  return false;
+}
+
+void setup(){
+  Serial.begin(57600);
+  myservo.attach(8);
+  
+  nh_.initNode();
+  nh_.subscribe(sub_open_);
+  nh_.subscribe(sub_close_);
+  nh_.advertise(pub_);
+  
+  current_pos_ = CLOSE_MS;
+  openGripper();
+  initTouchSensor(touch_left_zero_, touch_right_zero_);
+  Serial.println("########## Setup Done ##########");
+}
+
+void loop(){
+  nh_.spinOnce();
+  //openGripper();
+  //delay(1000);
+  //closeGripper();
+  //delay(1000);
+  //closeEnough();
+}

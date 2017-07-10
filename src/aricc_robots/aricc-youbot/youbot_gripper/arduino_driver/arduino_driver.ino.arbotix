@@ -1,0 +1,102 @@
+#include <ax12.h>
+#if (ARDUINO >= 100)
+ #include <Arduino.h>
+#else
+ #include <WProgram.h>
+#endif
+
+#include <ros.h>
+#include <std_msgs/Empty.h>
+
+//ID = 1 Left 
+//ID = 0 Right
+
+ros::NodeHandle nh_;
+const unsigned int servo_num_ = 2;
+const unsigned int id_[2] = {1,0};
+const unsigned int pose_open_[2] = {612,412};
+const unsigned int pose_close_light_[2] = {462,562};
+const unsigned int pose_close_heavy_[2] = {410,610};
+
+void open_cb(const std_msgs::Empty& msg){
+  moveGripper(id_, pose_open_);
+}
+
+void close_light_cb(const std_msgs::Empty& msg){
+  moveGripper(id_, pose_close_light_);
+}
+
+void close_heavy_cb(const std_msgs::Empty& msg){
+  moveGripper(id_, pose_close_heavy_);
+}
+
+ros::Subscriber<std_msgs::Empty> sub_open_("gripper_open", open_cb);
+ros::Subscriber<std_msgs::Empty> sub_close_light_("gripper_close_light", close_light_cb);
+ros::Subscriber<std_msgs::Empty> sub_close_heavy_("gripper_close_heavy", close_heavy_cb);
+
+
+void moveGripper(const unsigned int* id,const unsigned int* pose){
+  int temp;
+  int length = 4 + (servo_num_ * 3);   // 3 = id + pos(2byte)
+  int checksum = 254 + length + AX_SYNC_WRITE + 2 + AX_GOAL_POSITION_L;
+  setTXall();
+  ax12write(0xFF);
+  ax12write(0xFF);
+  ax12write(0xFE);
+  ax12write(length);
+  ax12write(AX_SYNC_WRITE);
+  ax12write(AX_GOAL_POSITION_L);
+  ax12write(2);
+  for(int i=0; i<servo_num_; i++)
+  {
+      temp = pose[i];;
+      checksum += (temp&0xff) + (temp>>8) + id[i];
+      ax12write(id[i]);
+      ax12write(temp&0xff);
+      ax12write(temp>>8);
+  } 
+  ax12write(0xff - (checksum % 256));
+  setRX(0);
+}
+
+void setup(){
+ // Serial.begin(9600);
+  ax12Init(1000000);
+  SetTorqueLimit(254,1023);
+  delay(50);
+  SetMaxTorque(254, 1023);
+  delay(50);
+  SetMovingSpeed(254,150);
+  delay(50);
+  TorqueOn(254,1);
+  delay(50);
+  SetAlarmLed(254,36);
+  delay(50);
+  SetAlarmShutdown(254,0);
+  delay(50);
+  moveGripper(id_, pose_open_);
+  delay(2000);
+  moveGripper(id_, pose_close_light_);
+  delay(2000);
+  moveGripper(id_, pose_close_heavy_);
+  delay(50);
+  LedOn(254,0);
+  delay(50);
+  
+  nh_.initNode();
+  nh_.subscribe(sub_open_);
+  nh_.subscribe(sub_close_light_);
+  nh_.subscribe(sub_close_heavy_);
+}
+
+void loop(){
+  nh_.spinOnce();
+  /*
+  closeGripper(close_light_);
+  delay(5000);
+  closeGripper(close_heavy_);
+  delay(5000);
+  openGripper();
+  delay(5000);
+  */
+}

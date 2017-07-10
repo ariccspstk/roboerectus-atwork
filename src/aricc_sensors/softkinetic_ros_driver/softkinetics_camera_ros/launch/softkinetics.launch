@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<launch>
+  <node pkg="softkinetics_camera_ros" type="softkinetics_camera_ros" name="softkinetics_camera_ros" output="screen">
+  <param name="color_enabled" type="bool" value="true" />
+  <param name="depth_enabled" type="bool" value="true" />
+  <param name="audio_enabled" type="bool" value="false" />
+  <param name="cloud_enabled" type="bool" value="false" />
+  <param name="camera_link"   type="string" value="softkinetic_link" />
+  <param name="depth_mode"    type="string" value="close" />
+  <param name="depth_frame_format" type="string" value="QVGA" />
+  <param name="depth_frame_rate"   type="int" value="25" />
+  <param name="color_frame_format" type="string" value="VGA" />
+  <param name="color_frame_rate"   type="int" value="25" />
+  <!--param name="color_compression"  type="string" value="YUY2" /-->
+  <param name="color_compression"  type="string" value="MJPEG" />
+  
+  </node>
+</launch>

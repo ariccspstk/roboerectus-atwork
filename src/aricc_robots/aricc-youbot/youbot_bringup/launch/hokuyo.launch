@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<launch> 
+    <node name="hokuyo_front" pkg="hokuyo_node" type="hokuyo_node" respawn="false" output="screen">
+    <remap from="/scan" to="/base_scan_front"/>
+    <param name="calibrate_time" type="bool" value="true"/> 
+    <param name="port" type="string" value="/dev/sensors/hokuyo_front"/> 
+  
+    <param name="intensity" type="bool" value="false"/>
+    <param name="frame_id" type="string" value="base_laser_front_link"/>
+  </node>
+  
+    <node name="hokuyo_rear" pkg="hokuyo_node" type="hokuyo_node" respawn="false" output="screen"><remap from="/scan" to="/base_scan_rear"/>
+    <param name="calibrate_time" type="bool" value="true"/> 
+    <param name="port" type="string" value="/dev/sensors/hokuyo_rear"/> 
+    <param name="intensity" type="bool" value="false"/>
+    <param name="frame_id" type="string" value="base_laser_rear_link"/>
+  </node>
+  
+  <node pkg="topic_tools" type="relay" name="relay_hokuyo_front" args="/base_scan_front /base_scan_combined"/>
+  <node pkg="topic_tools" type="relay" name="relay_hokuyo_rear" args="/base_scan_rear /base_scan_combined"/>
+</launch>

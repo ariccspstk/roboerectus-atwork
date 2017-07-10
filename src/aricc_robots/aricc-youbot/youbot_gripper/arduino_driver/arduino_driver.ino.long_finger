@@ -1,0 +1,99 @@
+#include <ax12.h>
+#if (ARDUINO >= 100)
+ #include <Arduino.h>
+#else
+ #include <WProgram.h>
+#endif
+
+#include <ros.h>
+#include <std_msgs/Empty.h>
+
+const int close_light_ = 485;
+const int close_heavy_ = 516;
+const int max_open_ = 450;
+const int close_step_ = 16;
+ros::NodeHandle nh_;
+
+void open_cb(const std_msgs::Empty& msg){
+  openGripper();
+}
+
+void close_light_cb(const std_msgs::Empty& msg){
+  closeGripper(close_light_);
+}
+
+void close_heavy_cb(const std_msgs::Empty& msg){
+  closeGripper(close_heavy_);
+}
+
+ros::Subscriber<std_msgs::Empty> sub_open_("gripper_open", open_cb);
+ros::Subscriber<std_msgs::Empty> sub_close_light_("gripper_close_light", close_light_cb);
+ros::Subscriber<std_msgs::Empty> sub_close_heavy_("gripper_close_heavy", close_heavy_cb);
+
+
+
+void openGripper(){
+  SetPosition(254,max_open_);
+  //LedOn(254,0);
+}
+
+
+void closeGripper(const int pos){
+  SetPosition(254,pos);
+  /*
+  int pos = max_open_;
+  int left_load = 0;
+  int right_load = 0;
+  while(1){
+    left_load = GetLoad(6);
+    if(left_load < 0)
+    delay(25);
+    right_load = GetLoad(7);
+    delay(25);
+   // Serial.println(left_load);
+   // Serial.println(right_load);
+   // Serial.println("");
+    if(left_load > 1400 && right_load > 1400 ) break;
+    if(pos >= max_close_) break;
+    pos += close_step_;
+    SetPosition(254,pos);
+  }*/
+  //LedOn(254,1);
+}
+
+void setup(){
+ // Serial.begin(9600);
+  ax12Init(1000000);
+  SetTorqueLimit(254,1023);
+  SetMaxTorque(254, 1023);
+  SetMovingSpeed(254,200);
+  TorqueOn(254,1);
+  SetAlarmLed(254,0);
+  SetAlarmShutdown(254,0);
+  LedOn(254,1);
+  delay(500);
+  LedOn(254,0);
+  closeGripper(close_light_);
+  delay(2000);
+  closeGripper(close_heavy_);
+  delay(2000);
+  openGripper();
+  
+  
+  nh_.initNode();
+  nh_.subscribe(sub_open_);
+  nh_.subscribe(sub_close_light_);
+  nh_.subscribe(sub_close_heavy_);
+}
+
+void loop(){
+  nh_.spinOnce();
+  /*
+  closeGripper(close_light_);
+  delay(5000);
+  closeGripper(close_heavy_);
+  delay(5000);
+  openGripper();
+  delay(5000);
+  */
+}

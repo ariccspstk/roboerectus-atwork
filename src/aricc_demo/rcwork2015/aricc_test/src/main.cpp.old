@@ -1,0 +1,515 @@
+#include <ros/ros.h>
+#include <geometry_msgs/Pose2D.h>
+#include <std_msgs/Empty.h>
+
+#include <actionlib/client/simple_action_client.h>
+#include <youbot_base_global_move/BaseAction.h>
+#include <youbot_base_local_move/BaseAction.h>
+#include <youbot_base_alignment/BaseAction.h>
+#include <youbot_load_object/LoadAction.h>
+#include <youbot_unload_object_table/UnloadAction.h>
+#include <youbot_unload_object_hole/UnloadAction.h>
+
+#include <aricc_rcwork_task/rcwork_task.h>
+#include <aricc_utils/geometry_utils.h>
+
+#include <vector>
+#include <stdio.h> 
+#include <stdlib.h>
+#include <math.h>
+#include <string>
+
+
+class TEST{
+public:
+  typedef actionlib::SimpleActionClient<youbot_base_global_move::BaseAction> ActionBaseGlobal;
+  typedef actionlib::SimpleActionClient<youbot_base_local_move::BaseAction> ActionBaseLocal;
+  typedef actionlib::SimpleActionClient<youbot_base_alignment::BaseAction> ActionBaseAlignment;
+  typedef actionlib::SimpleActionClient<youbot_load_object::LoadAction> ActionLoadTable;
+  typedef actionlib::SimpleActionClient<youbot_unload_object_table::UnloadAction> ActionUnloadTable;
+  typedef actionlib::SimpleActionClient<youbot_unload_object_hole::UnloadAction> ActionUnloadHole;
+  
+  TEST(): pnh_("~"),
+    is_base_local_sent_goal_(false),
+    is_base_global_sent_goal_(false),
+    is_base_alignment_sent_goal_(false),
+    is_load_table_sent_goal_(false),
+    is_unload_table_sent_goal_(false),
+    is_unload_hole_sent_goal_(false),
+    refbox_received_(false),
+    rate_(5){
+  }
+
+  ~TEST(void){
+    sub_.shutdown();
+  }
+
+  bool init(){
+    pnh_.param<double>("rate",        rate_, 5);
+    sub_ = nh_.subscribe("/refbox"  ,1, &TEST::refCB,this);
+    tray_.clear();
+    tray_.resize(3,"empty");    
+    client_base_local_.reset( new ActionBaseLocal("youbot_base_local_move_server", true) );
+    client_base_global_.reset( new ActionBaseGlobal("youbot_base_global_move_server", true) );
+    client_base_alignment_.reset( new ActionBaseAlignment("youbot_base_alignment_server", true) );
+    client_load_table_.reset( new ActionLoadTable("youbot_load_object_server", true) );
+    client_unload_table_.reset( new ActionUnloadTable("youbot_unload_object_table_server", true) );
+    client_unload_hole_.reset( new ActionUnloadHole("youbot_unload_object_hole_server", true) );
+    
+    unsigned int cnt = 0;
+    while(!client_base_global_->waitForServer(ros::Duration(5.0))){
+      ROS_WARN("Waiting for youbot_base_global_move actionlib");
+      if(++cnt == 5) return false;
+    }
+    cnt = 0;
+    while(!client_base_local_->waitForServer(ros::Duration(5.0))){
+      ROS_WARN("Waiting for youbot_base_local_move actionlib");
+      if(++cnt == 5) return false;
+    }
+    cnt = 0;
+    while(!client_base_alignment_->waitForServer(ros::Duration(5.0))){
+      ROS_WARN("Waiting for youbot_base_alignment actionlib");
+      if(++cnt == 5) return false;
+    }
+    cnt = 0;
+    while(!client_load_table_->waitForServer(ros::Duration(5.0))){
+      ROS_WARN("Waiting for youbot_load_object actionlib");
+      if(++cnt == 5) return false;
+    }
+    cnt = 0;
+    while(!client_unload_table_->waitForServer(ros::Duration(5.0))){
+      ROS_WARN("Waiting for youbot_unload_object_table actionlib");
+      if(++cnt == 5) return false;
+    }
+    cnt = 0;
+    while(!client_unload_hole_->waitForServer(ros::Duration(5.0))){
+      ROS_WARN("Waiting for youbot_unload_object_hole actionlib");
+      if(++cnt == 5) return false;
+    }
+
+    return true;
+  }
+
+  void resetState(){
+    client_base_local_->cancelGoal();
+    client_base_global_->cancelGoal();
+    client_base_alignment_->cancelGoal();
+    client_load_table_->cancelGoal();
+    client_unload_table_->cancelGoal();
+    client_unload_hole_->cancelGoal();
+  }
+
+  void spin(){
+    ros::Rate r(rate_);
+    StateEnum state;
+    while( nh_.ok() ){
+      //ROS_INFO("Spin");
+      r.sleep();
+      if( r.cycleTime() > ros::Duration(1.0/rate_) )
+        ROS_WARN("TEST: Control desired rate of %.3lfHz... the loop actually took %.4lf seconds", rate_, r.cycleTime().toSec());
+      
+      ros::spinOnce();
+      if(!waitForRefbox()) continue;
+      state = taskStep();
+
+      if( state == SUCCEEDED ){
+        ros::Time time_now = ros::Time::now(); 
+        ROS_INFO("TEST: Succeeded, take %.3lf s", 
+          (time_now - time_start_).toSec());
+        resetState(); 
+        break;
+      }
+      else if( state == ABORTED ){
+        ros::Time time_now = ros::Time::now(); 
+        ROS_ERROR("TEST: Aborted, take %.3lf s", 
+          (time_now - time_start_).toSec());
+        resetState(); 
+        break;
+      }
+    }
+  }
+  
+private:
+  boost::shared_ptr<ActionBaseGlobal>    client_base_global_;
+  boost::shared_ptr<ActionBaseLocal>     client_base_local_;
+  boost::shared_ptr<ActionBaseAlignment> client_base_alignment_;
+  boost::shared_ptr<ActionLoadTable>     client_load_table_;
+  boost::shared_ptr<ActionUnloadTable>   client_unload_table_;
+  boost::shared_ptr<ActionUnloadHole>    client_unload_hole_;
+  
+  ros::NodeHandle nh_, pnh_;
+  ros::Time time_start_;
+  ros::Subscriber sub_;
+  boost::mutex mutex_;
+  double rate_;
+  bool refbox_received_;
+  bool is_base_local_sent_goal_;
+  bool is_base_global_sent_goal_;
+  bool is_base_alignment_sent_goal_;
+  bool is_load_table_sent_goal_;
+  bool is_unload_table_sent_goal_;
+  bool is_unload_hole_sent_goal_;
+
+  std::vector<RCworkTask> tasks_;
+  std::vector<std::string> tray_;
+
+  void refCB(const std_msgs::Empty::ConstPtr& msg){
+    boost::mutex::scoped_lock lock(mutex_);
+    //ROS_INFO("REFBOX");
+    if(!loadTasks()){
+      ROS_ERROR("Loading task error");
+      return;
+    }
+    refbox_received_ = true;
+  }
+
+  bool waitForRefbox(){
+    boost::mutex::scoped_lock lock(mutex_);
+    if( !refbox_received_ ){
+      time_start_ = ros::Time::now();
+    }
+    return refbox_received_;
+  }
+
+  bool loadTasks(){
+    //Loading tasks from config files
+    ROS_INFO("Loading tasks from config files");
+    XmlRpc::XmlRpcValue list;
+    if(!nh_.getParam("plans", list)){
+      ROS_ERROR("plans does not exist in config file");
+      return false;
+    }
+
+    ROS_INFO("Found task list, size:%d", list.size());
+    ROS_ASSERT( list.getType() == XmlRpc::XmlRpcValue::TypeArray);
+    tasks_.clear();
+    
+    if( list.getType() == XmlRpc::XmlRpcValue::TypeArray ){
+      for(size_t i = 0; i < list.size(); ++i){
+        std::string place = 
+        std::string(list[i]["place"]);
+
+        std::string action = 
+        std::string(list[i]["action"]);
+
+        std::string dir = 
+        std::string(list[i]["dir"]);
+
+        std::string pause = 
+        std::string(list[i]["pause"]);
+
+        XmlRpc::XmlRpcValue object_list = list[i]["objects"];
+         
+        RCworkTask t(nh_);
+        if( !t.getLocation( place, dir ) ) return false;
+        if( !t.getAction( action ) )       return false;
+        if( !t.getPauseTime( pause ) )     return false;
+        if( !t.getObjects( object_list ) ) return false;
+        tasks_.push_back(t);
+      }
+    }
+
+    ROS_INFO("Loaded %lu tasks:", tasks_.size());
+    for(size_t i = 0; i < tasks_.size(); ++i){
+      printf("task_%lu: location:[ (%.3lf,%.3lf,%.3lf),(%.3lf,%.3lf,%.3lf,%.3lf),%.3lf, %.3lf ], action:%d, pause:%u, ", i, tasks_.at(i).location_.position.x, tasks_.at(i).location_.position.y, tasks_.at(i).location_.position.z, tasks_.at(i).location_.orientation.x, tasks_.at(i).location_.orientation.y, tasks_.at(i).location_.orientation.z, tasks_.at(i).location_.orientation.w, tasks_.at(i).align_dist_,tasks_.at(i).height_, tasks_.at(i).action_, tasks_.at(i).pause_);
+      std::string str = "objects:[";
+      for(size_t j = 0; j < tasks_.at(i).objects_.size(); ++j){
+        str += tasks_.at(i).objects_.at(j);
+        str += " ";
+      }
+      str += "]";
+      printf("%s\n\n", str.c_str());
+    }
+    return true;
+  }
+
+  StateEnum moveBaseGlobal(geometry_msgs::Pose pose){
+    if(!is_base_global_sent_goal_){
+      youbot_base_global_move::BaseGoal goal;
+      goal.timeout = 40;
+      goal.destination = pose;
+      client_base_global_->sendGoal(goal);
+      is_base_global_sent_goal_ = true;
+    }
+    if( client_base_global_->getState().toString() == "SUCCEEDED" ) {
+      is_base_global_sent_goal_ = false;
+      return SUCCEEDED;
+    }
+    else if( client_base_global_->getState().toString() == "ABORTED" ) {
+      is_base_global_sent_goal_ = false;
+      return ABORTED;
+    }
+    return ACTIVE;
+  }
+
+  StateEnum moveBaseLocal( geometry_msgs::Pose2D pose){
+    if(!is_base_local_sent_goal_){
+      youbot_base_local_move::BaseGoal goal;
+      goal.timeout = 30;
+      goal.destination = pose;
+      client_base_local_->sendGoal(goal);
+      is_base_local_sent_goal_ = true;
+    }
+    if( client_base_local_->getState().toString() == "SUCCEEDED" ){
+      is_base_local_sent_goal_ = false;
+      return SUCCEEDED;
+    }
+    else if( client_base_local_->getState().toString() == "ABORTED" ){
+      is_base_local_sent_goal_ = false;
+      return ABORTED;
+    }
+    else return ACTIVE;
+  }
+
+  StateEnum moveBaseAlignment( double dist ){
+    if(!is_base_alignment_sent_goal_){
+      youbot_base_alignment::BaseGoal goal;
+      goal.timeout = 30;
+      goal.distance = dist;
+      client_base_alignment_->sendGoal(goal);
+      is_base_alignment_sent_goal_ = true;
+    }
+    if( client_base_alignment_->getState().toString() == "SUCCEEDED" ){
+      is_base_alignment_sent_goal_ = false;
+      return SUCCEEDED;
+    }
+    else if( client_base_alignment_->getState().toString() == "ABORTED" ){
+      is_base_alignment_sent_goal_ = false;
+      return ABORTED;
+    }
+    else return ACTIVE;
+  }
+
+  StateEnum loadTable( std::vector<std::string> items,
+    std::vector<std::string>& tray){
+    if(!is_load_table_sent_goal_){
+      youbot_load_object::LoadGoal goal;
+      goal.timeout = 120;
+      goal.tray_state = tray;
+      goal.items = items;
+      client_load_table_->sendGoal(goal);
+      is_load_table_sent_goal_ = true;
+    }
+    if( client_load_table_->getState().toString() == "SUCCEEDED" ){
+      is_load_table_sent_goal_ = false;
+      tray = client_load_table_->getResult()->tray_state;
+      std::string str = "Tray:[";
+      for(size_t i = 0; i < tray.size(); ++i){
+        str += tray[i];
+        str += " ";
+      }
+      str += "]";
+      ROS_INFO("%s",str.c_str());
+      return SUCCEEDED;
+    }
+    else if( client_load_table_->getState().toString() == "ABORTED" ){
+      is_load_table_sent_goal_ = false;
+      tray = client_load_table_->getResult()->tray_state;
+      std::string str = "Tray:[";
+      for(size_t i = 0; i < tray.size(); ++i){
+        str += tray[i];
+        str += " ";
+      }
+      str += "]";
+      ROS_INFO("%s",str.c_str());
+      return ABORTED;
+    }
+    else return ACTIVE;
+  }
+
+  StateEnum loadBelt( std::vector<std::string> items,
+    std::vector<std::string>& tray){
+    return SUCCEEDED;
+  }
+
+  StateEnum unloadTable( std::vector<std::string> items,
+    std::vector<std::string>& tray ){
+    if(!is_unload_table_sent_goal_){
+      youbot_unload_object_table::UnloadGoal goal;
+      goal.timeout = 120;
+      goal.items = items;
+      goal.tray_state = tray;
+      client_unload_table_->sendGoal(goal);
+      is_unload_table_sent_goal_ = true;
+    }
+    if( client_unload_table_->getState().toString() == "SUCCEEDED" ){
+      is_unload_table_sent_goal_ = false;
+      tray = client_unload_table_->getResult()->tray_state;
+      std::string str = "Tray:[";
+      for(size_t i = 0; i < tray.size(); ++i){
+        str += tray[i];
+        str += " ";
+      }
+      str += "]";
+      ROS_INFO("%s",str.c_str());
+      return SUCCEEDED;
+    }
+    else if( client_unload_table_->getState().toString() == "ABORTED" ){
+      is_unload_table_sent_goal_ = false;
+      tray = client_unload_table_->getResult()->tray_state;
+      std::string str = "Tray:[";
+      for(size_t i = 0; i < tray.size(); ++i){
+        str += tray[i];
+        str += " ";
+      }
+      str += "]";
+      ROS_INFO("%s",str.c_str());
+      return ABORTED;
+    }
+    else return ACTIVE;
+  }
+
+  StateEnum unloadHole( std::vector<std::string> items, 
+    std::vector<std::string>& tray ){
+    if(!is_unload_hole_sent_goal_){
+      youbot_unload_object_hole::UnloadGoal goal;
+      goal.timeout = 120;
+      goal.items = items;
+      goal.tray_state = tray;
+      client_unload_hole_->sendGoal(goal);
+      is_unload_hole_sent_goal_ = true;
+    }
+    if( client_unload_hole_->getState().toString() == "SUCCEEDED" ){
+      is_unload_hole_sent_goal_ = false;
+      tray = client_unload_hole_->getResult()->tray_state;
+      std::string str = "Tray:[";
+      for(size_t i = 0; i < tray.size(); ++i){
+        str += tray[i];
+        str += " ";
+      }
+      str += "]";
+      ROS_INFO("%s",str.c_str());
+      return SUCCEEDED;
+    }
+    else if( client_unload_hole_->getState().toString() == "ABORTED" ){
+      is_unload_hole_sent_goal_ = false;
+      tray = client_unload_hole_->getResult()->tray_state;
+      std::string str = "Tray:[";
+      for(size_t i = 0; i < tray.size(); ++i){
+        str += tray[i];
+        str += " ";
+      }
+      str += "]";
+      ROS_INFO("%s",str.c_str());
+      return ABORTED;
+    }
+    else return ACTIVE;
+  }
+
+  void updateTaskList(){
+    tasks_.erase(tasks_.begin());
+    ROS_INFO("Task list left %lu tasks",tasks_.size());
+  }
+
+  StateEnum taskStep(){
+    if( tasks_[0].now_ != tasks_[0].last_ )
+      ROS_INFO( "state now:%s",tasks_[0].toString().c_str() );
+    tasks_[0].last_ = tasks_[0].now_;
+
+    StateEnum state;
+    geometry_msgs::Pose2D basePose;
+
+    switch( tasks_[0].now_ ){
+      case kRobotMoveToTable:
+       state = moveBaseGlobal(tasks_[0].location_);
+       //state = SUCCEEDED; 
+       if( state == SUCCEEDED ){
+         if(tasks_[0].action_ == EXIT) tasks_[0].now_ = kPause;
+         else tasks_[0].now_ = kRobotAlignToTable;
+        }
+        else if( state == ABORTED ) tasks_[0].now_ = kCancel;
+    
+      break;
+
+      case kRobotAlignToTable:
+        state = moveBaseAlignment(tasks_[0].align_dist_);
+        if( state == SUCCEEDED ){
+           if(tasks_[0].action_ == PICKUP_TABLE) {
+             tasks_[0].now_ = kRobotLoadObjectsFromTable;
+           }
+           if(tasks_[0].action_ == PICKUP_BELT) {
+             tasks_[0].now_ = kRobotLoadObjectsFromBelt;
+           }
+           if(tasks_[0].action_ == PLACE_TABLE) {
+             tasks_[0].now_ = kRobotUnloadObjectsToTable;
+           }
+           if(tasks_[0].action_ == PLACE_HOLE) {
+             tasks_[0].now_ = kRobotUnloadObjectsToHole;
+           }
+        }
+        else if( state == ABORTED ) tasks_[0].now_ = kCancel;
+      break;
+
+      case kRobotLoadObjectsFromTable:
+        state = loadTable(tasks_[0].objects_, tray_);
+        if( state == SUCCEEDED ){
+          tasks_[0].now_ = kRobotMoveAway;
+        }
+        else if( state == ABORTED ) tasks_[0].now_ = kCancel;
+      break;
+
+      case kRobotLoadObjectsFromBelt:
+        state = loadBelt(tasks_[0].objects_, tray_);
+        if( state == SUCCEEDED ){
+          tasks_[0].now_ = kRobotMoveAway;
+        }
+        else if( state == ABORTED ) tasks_[0].now_ = kCancel;
+      break;
+
+      case kRobotUnloadObjectsToTable:
+        state = unloadTable(tasks_[0].objects_, tray_);
+        if( state == SUCCEEDED ){
+          tasks_[0].now_ = kRobotMoveAway;
+        }
+        else if( state == ABORTED ) tasks_[0].now_ = kCancel;
+      break;
+
+      case kRobotUnloadObjectsToHole:
+        state = unloadHole(tasks_[0].objects_, tray_);
+        if( state == SUCCEEDED ){
+          tasks_[0].now_ = kRobotMoveAway;
+        }
+        else if( state == ABORTED ) tasks_[0].now_ = kCancel;
+      break;
+
+      case kRobotMoveAway:
+        basePose.x = -0.05;
+        basePose.y = 0.0;
+        basePose.theta = 0.0;
+        state = moveBaseLocal(basePose);
+        if(state == SUCCEEDED) tasks_[0].now_ = kPause;
+        else if(state == ABORTED) tasks_[0].now_ = kCancel;
+      break;
+
+      case kPause:
+        sleep(tasks_[0].pause_);
+        updateTaskList();
+        if(tasks_.size() == 0) return SUCCEEDED;
+      break;
+
+      case kCancel:
+        ROS_ERROR("step aborted, cancel current task");
+        sleep(tasks_[0].pause_);
+        updateTaskList();
+        if(tasks_.size() == 0) return ABORTED;
+      break;
+
+      default:
+      break;
+    }
+    return ACTIVE;
+  }
+
+};
+
+int main(int argc, char ** argv){
+  ros::init(argc,argv,"aricc_test");
+  TEST test;
+  if( !test.init() ){
+    ROS_ERROR("robocup @work competition initial failed!");
+    return 0;
+  }
+  ROS_INFO("Starting aricc_test");
+  test.spin();
+  return 0;
+}

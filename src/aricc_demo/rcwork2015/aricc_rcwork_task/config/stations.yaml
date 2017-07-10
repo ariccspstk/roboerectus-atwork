@@ -1,0 +1,12 @@
+workstations:
+  - {table_height: '0.00', offset_x: '0.219', offset_y: '0.002', offset_z: '-0.111', object_detect_z: '0.545'}
+  - {table_height: '0.05', offset_x: '0.222', offset_y: '0.0015', offset_z: '-0.063', object_detect_z: '0.49'}
+  - {table_height: '0.10', offset_x: '0.25', offset_y: '0.006', offset_z: '-0.020', object_detect_z: '0.22'}
+  - {table_height: '0.15', offset_x: '0.222', offset_y: '-0.001', offset_z: '0.036', object_detect_z: '0.40'}
+
+precision_stations:
+  - {table_height: '0.10', offset_x: '0.275', offset_y: '-0.02', offset_z: '-0.022', object_detect_z: '0.27'}
+#  - {table_height: '0.10', offset_x: '0.285', offset_y: '-0.03', offset_z: '-0.022', object_detect_z: '0.27'}
+
+rotating_stations:
+  - {table_height: '0.10', offset_x: '0.228', offset_y: '0.00', offset_z: '0.036', object_detect_z: '0.20'}

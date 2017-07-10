@@ -1,0 +1,41 @@
+locations:
+#  - {place: 'Shelf 1', x: '1.926',  y: '-1.434',  z: '0', dir: 'EAST', align: '0.075', height: '0.10'}
+#  - {place: 'Shelf 2', x: '1.926',  y: '-1.434',  z: '0', dir: 'EAST', align: '0.075', height: '0.10'}
+#  - {place: 'Shelf 1', x: '-1.254',  y: '1.170',  z: '0', dir: 'SOUTH', align: '0.08', height: '0.15'}
+#  - {place: 'Shelf 2', x: '1.928',  y: '1.636',  z: '0', dir: 'WEST', align: '0.55', height: '0.0'}
+
+  - {place: 'Workstation 11', x: '0.1706',  y: '-2.8907',  z: '0', dir: 'NORTH', align: '0.08', height: '0.05'}
+  - {place: 'Waypoint 14', x: '0.03739',  y: '-1.561',  z: '0', dir: 'NORTH', align: '0.1', height: '0.05'}
+  - {place: 'Rotating Table', x: '-0.099745', y: '-0.74258',  z: '0', dir: 'NORTH', align: '0.1', height: '0.05'}
+#  - {place: 'Waypoint 4', x: '-1.351', y: '-0.832',  z: '0', dir: 'NORTH', align: '0.075', height: '0.05'}
+#  - {place: 'Waypoint 5', x: '-2.1496', y: '-3.5142',  z: '0', dir: 'NORTH', align: '0.075', height: '0.05'}
+#  - {place: 'Waypoint 6',  x: '-2.7629', y: '-3.3772', z: '0', dir: 'NORTH', align: '0.075', height: '0.05'}
+#  - {place: 'Waypoint 7', x: '-1.5012', y: '-2.6127', z: '0', dir: 'NORTH', align: '0.075', height: '0.05'}
+  - {place: 'Waypoint 15', x: '-0.7042', y: '-0.84151', z: '0', dir: 'NORTH', align: '0.075', height: '0.05'}
+  - {place: 'Workstation 6', x: '-0.64818',  y: '-1.458',  z: '0', dir: 'NORTH', align: '0.075', height: '0.05'}
+#  - {place: 'Waypoint 10', x: '-2.1496', y: '-3.5142',  z: '0', dir: 'NORTH', align: '0.075', height: '0.05'}
+#  - {place: 'Waypoint 11', x: '-2.1496', y: '-3.5142',  z: '0', dir: 'NORTH', align: '0.075', height: '0.05'}
+#  - {place: 'Waypoint 12', x: '-0.546', y: '-2.795',  z: '0', dir: 'NORTH', align: '0.075', height: '0.05'}
+#  - {place: 'Waypoint 13', x: '-1.5012', y: '-2.6127',  z: '0', dir: 'NORTH', align: '0.075', height: '0.05'}
+#  - {place: 'Waypoint 14', x: '-0.693', y: '-1.276',  z: '0', dir: 'NORTH', align: '0.075', height: '0.05'}
+#  - {place: 'Waypoint 15', x: '-0.546', y: '-2.795',  z: '0', dir: 'NORTH', align: '0.075', height: '0.05'}
+
+#  - {place: 'Workstation 1', x: '-2.2222',  y: '-3.456',  z: '0', dir: 'EAST', align: '-1', height: '0.0'}
+  - {place: 'Waypoint 2', x: '-1.3349', y: '-0.7937',  z: '0', dir: 'WEST', align: '0.075', height: '0.10'}
+#  - {place: 'Workstation 3', x: '-0.451',  y: '0.929',  z: '0', dir: 'EAST', align: '0.075', height: '0.10'}
+#  - {place: 'Workstation 4', x: '-2.1814', y: '-3.499',  z: '0', dir: 'NORTH', align: '0.075', height: '0.15'}
+  - {place: 'Waypoint 10', x: '-2.8638',  y: '-0.91246',  z: '0', dir: 'WEST', align: '0.075', height: '0.10'}
+#  - {place: 'Workstation 6', x: '-2.1496', y: '-3.5142',  z: '0', dir: 'NORTH', align: '0.075', height: '0.10'}
+#  - {place: 'Workstation 7', x: '2.301',  y: '3.628',  z: '0', dir: 'NORTH', align: '0.075', height: '0.0'}
+#  - {place: 'Workstation 8', x: '2.074',  y: '0.038',  z: '0', dir: 'NORTH', align: '0.075', height: '0.05'}
+  - {place: 'Waypoint 1', x: '-2.8388', y: '-2.5135',  z: '0', dir: 'EAST', align: '0.075', height: '0.15'}
+#  - {place: 'Workstation 10', x: '-2.7629', y: '-3.3772',  z: '0', dir: 'NORTH', align: '0.075', height: '0.15'}
+#  - {place: 'Workstation 11', x: '1.368',  y: '-2.703',  z: '0', dir: 'NORTH', align: '-1', height: '0.0'}
+#  - {place: 'Workstation 12', x: '-0.073',  y: '-2.629',  z: '0', dir: 'SOUTH', align: '0.075', height: '0.05'}
+
+#  - {place: 'Rotating Table', x: '0.985',  y: '-2.576',  z: '0', dir: 'SOUTH', align: '0.075', height: '0.10'}
+#  - {place: 'Conveyor Belt', x: '-1.5541',  y: '-3.0943',  z: '0', dir: 'EAST', align: '0.075', height: '0.10'}
+  - {place: 'Robot', x: '-1.5719',  y: '-3.4815',  z: '0', dir: 'NORTH', align: '0.075', height: '0.0'}
+  - {place: 'Workstation 5', x: '-1.2197',  y: '-3.3187',  z: '0', dir: 'EAST', align: '0.075', height: '0.10'}
+
+  - {place: 'Exit', x: '-2.4865', y: '-0.96265',  z: '0', dir: 'NORTH', align: '0.075', height: '0.0'}

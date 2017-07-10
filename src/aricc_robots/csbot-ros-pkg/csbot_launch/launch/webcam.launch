@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+
+<launch>
+  <node pkg="usb_cam" type="usb_cam_node" name="camera1"  output="screen">
+    <param name="video_device" type="string" value="/dev/video0" />
+    <param name="image_width" type="int" value="320" />
+    <param name="image_height" type="int" value="240" />
+    
+  </node>
+
+</launch>
+

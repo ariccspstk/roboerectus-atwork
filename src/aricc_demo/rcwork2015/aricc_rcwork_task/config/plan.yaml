@@ -1,0 +1,10 @@
+plan:
+  - {place: 'S1', action: 'EXIT', objects: [], pause: '3', dir: 'N' }
+  - {place: 'S2', action: 'EXIT', objects: [], pause: '3', dir: 'S' }
+  - {place: 'S3', action: 'EXIT', objects: [], pause: '3', dir: 'W' }
+  - {place: 'S4', action: 'EXIT', objects: [], pause: '3', dir: 'E' }
+  - {place: 'S5', action: 'EXIT', objects: [], pause: '3', dir: 'N' }
+  - {place: 'S6', action: 'EXIT', objects: [], pause: '3', dir: 'S' }
+  - {place: 'S7', action: 'EXIT', objects: [], pause: '3', dir: 'W' }
+  - {place: 'S8', action: 'EXIT', objects: [], pause: '3', dir: 'E' }
+  - {place: 'E1', action: 'EXIT', objects: [], pause: '3', dir: 'N' }

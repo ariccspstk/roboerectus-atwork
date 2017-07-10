@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<launch>
+  <node pkg="youbot_base_alignment" type="youbot_base_alignment_server" name="youbot_base_alignment_server" output="screen">
+    <param name="topic_name" type="string" value="/youbot_laser_pipeline/GetBeamDist/output"/>
+    <param name="offset_y" type="double" value="-0.25"/>
+    <param name="rate"     type="int" value="5"/>
+    <param name="l_angle"  type="double" value="12.0"/>
+    <param name="f_angle"  type="double" value="0.0"/>
+    <param name="r_angle"  type="double" value="-12.0"/>
+    <param name="right_angle"  type="double" value="-89"/>
+    <param name="robot_width"  type="double" value="0.51"/>
+    <remap from="cmd_vel" to="cmd_vel_alignment"/>
+   </node>
+</launch>
+

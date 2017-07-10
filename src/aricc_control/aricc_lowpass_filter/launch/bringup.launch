@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<launch>  
+  <node pkg="aricc_lowpass_controller" type="aricc_lowpass_controller" name="aricc_lowpass_controller" output="screen">i
+    <param name="rate" value="20.0" type="double" />
+    <param name="t"    value="0.2"  type="double" />
+    <param name="dt"   value="0.1"  type="double" />
+    <param name="pub_topic" value="cmd_vel_lowpass" type="string" />
+    <param name="sub_topic" value="cmd_vel_mux" type="string" />
+   </node>
+</launch>

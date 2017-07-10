@@ -1,0 +1,70 @@
+# Robot Configuration Parameters
+TrajectoryPlannerROS:
+    acc_lim_x: 1.5
+    acc_lim_y: 1.5
+    acc_lim_th: 2.0
+
+    max_vel_x: 0.6
+    min_vel_x: -0.6
+    max_vel_y: 0.3
+    min_vel_y: -0.3
+    max_vel_theta: 0.6
+    min_vel_theta: -0.6
+
+    max_rotational_vel: 0.5
+    min_in_place_rotational_vel: 0.1
+
+    # Goal Tolerance Parameters
+    xy_goal_tolerance: 0.05
+    yaw_goal_tolerance: 0.1
+
+    # Forward Simulation Parameters
+    sim_time: 1.7
+    sim_granularity: 0.025
+    vx_samples: 6
+    vy_samples: 6
+    vtheta_samples: 6
+
+    # Velocity samples
+    #x_vels:  [-0.2, -0.1, 0.1, 0.2]
+    #y_vels:  [-0.2, -0.1, 0.1, 0.2]
+    #th_vels: [-0.2, -0.1, 0.1, 0.2]
+
+    # Trajectory Scoring Parameters
+    #goal_distance_bias: 0.8
+    #path_distance_bias: 0.6
+    #occdist_scale: 0.01
+    #heading_scale: 6 # To make sure robot follows global path
+    
+    goal_distance_bias: 0.6
+    path_distance_bias: 0.6
+    occdist_scale: 0.01
+    heading_scale: 1 # To make sure robot follows global path
+    path_align_scale: 0.6
+    path_backward_scale: 0.01
+    
+    #heading_lookahead: 0.325
+    heading_lookahead: 0
+    min_vel_x_y: 0.1
+    min_rot_vel: 0.1
+    dist_rotate_to_goal: 0.5 #If distance is less than xx, make sure robot rotates to goal
+
+    # Oscillation Prevention Parameters
+    oscillation_reset_dist: 0.01
+    
+    publish_cost_grid_pc: false
+    prune_plan: true
+
+DWAPlannerROS:
+   max_trans_vel: 1.0
+   min_trans_vel: 0.1
+
+   max_rot_vel: 1.0
+   min_rot_vel: 0.2
+
+NavfnROS:
+  #A tolerance on the goal point for the planner. NavFn will attempt to create a plan that is as close to the specified goal as possible but no further than default_tolerance away.
+  default_tolerance: 0.2
+  visualize_potential: false
+  allow_unknown: false
+   

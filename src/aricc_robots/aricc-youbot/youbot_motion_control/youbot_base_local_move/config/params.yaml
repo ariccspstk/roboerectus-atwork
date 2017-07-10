@@ -1,0 +1,25 @@
+rate: 20
+linear_tolerance: 0.01
+angular_tolerance: 2
+p_x: 0.4
+i_x: 0
+d_x: 0.01
+i_min_x: 0
+i_max_x: 0
+p_y: 0.4
+i_y: 0
+d_y: 0.01
+i_min_y: 0
+i_max_y: 0
+p_th: 0.8
+i_th: 0
+d_th: 0.01
+i_min_th: 0
+i_max_th: 0
+
+vx_min: 0.05
+vx_max: 0.3
+vy_min: 0.05
+vy_max: 0.3
+vth_min: 0.05
+vth_max: 0.8

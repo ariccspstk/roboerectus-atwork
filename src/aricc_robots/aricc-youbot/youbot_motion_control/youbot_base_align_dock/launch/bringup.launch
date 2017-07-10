@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<launch>
+  <node pkg="youbot_base_align_dock" type="youbot_base_align_dock_server" name="youbot_base_align_dock_server" output="screen">
+    <param name="marker_topic" type="string" value="/youbot_marker_detection/CheckBoardDetector/output"/>
+    <param name="offset_x" type="double" value="0.5"/>
+    <param name="rate"     type="int" value="10"/>
+    <remap from="cmd_vel" to="cmd_vel_align_dock"/>
+   </node>
+</launch>
+
