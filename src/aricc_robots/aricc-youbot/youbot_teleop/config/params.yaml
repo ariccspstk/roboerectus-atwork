@@ -25,7 +25,7 @@ gripper_name_list: [
   'gripper_close_heavy' 
 ]
 #for the arena on the right
-init_pose: ['-1.3734', '-1.397', '0.00', '0.00', '0.00', '0.52975', '0.9986']
+init_pose: ['-0.4995', '-0.98394', '0.00', '0.00', '0.00', '-0.65471', '0.77587']
 
 #for the arena on the left
 #init_pose: ['-1.591', '-0.593', '0.00', '0.00', '0.00', '0.658', '0.753']
