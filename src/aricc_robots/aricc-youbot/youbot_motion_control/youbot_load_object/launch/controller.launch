@@ -4,10 +4,10 @@
     <param name="tray_1" type="string" value="empty"/>
     <param name="tray_2" type="string" value="empty"/>
     <param name="tray_3" type="string" value="empty"/>
-    <param name="item_1" type="string" value="S40_40_G"/>
-    <param name="item_2" type="string" value="F20_20_B"/>
-    <param name="item_3" type="string" value="M30"/>
-    <param name="table_height" type="double" value="0.10"/>
+    <param name="item_1" type="string" value="R20"/>
+    <param name="item_2" type="string" value="Axis"/>
+    <param name="item_3" type="string" value="Motor"/>
+    <param name="table_height" type="double" value="0.0"/>
   </node>
 
   <node pkg="rqt_gui" type="rqt_gui" name="rqt_gui" />

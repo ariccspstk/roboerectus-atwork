@@ -57,19 +57,19 @@ objects:
 
   - { name: 'S40_40_G', 
       width: '0.042', 
-      height: '0.095', 
+      height: '0.086', 
       color_h: '56', 
       color_s: '14', 
       color_v: '104', 
       density: '58'} 
 
-#  - { name: 'M20_100', 
-#      width: '0.033', 
-#      height: '0.114', 
-#      color_h: '26', 
-#      color_s: '5', 
-#      color_v: '41', 
-#      density: '68'} 
+  - { name: 'M20_100', 
+      width: '0.026', 
+      height: '0.088', 
+      color_h: '41', 
+      color_s: '10', 
+      color_v: '44', 
+      density: '80'} 
 
 #real M20
   - { name: 'M20', 
@@ -117,7 +117,7 @@ objects:
 
   - { name: 'Bearing Box', 
       width: '0.044', 
-      height: '0.053', 
+      height: '0.052', 
       color_h: '59', 
       color_s: '21', 
       color_v: '86', 
