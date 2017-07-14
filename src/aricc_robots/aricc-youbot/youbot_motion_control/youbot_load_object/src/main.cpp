@@ -1183,6 +1183,29 @@ public:
           param_name_, object_detect_z_ ) == ABORTED)
       return ABORTED;
 
+//Asad changes! The codes below will dynamically change the objects parameters (dimensions) based on the current table height.
+    int dummy;
+    if(goal.table_height == 0.0){
+        dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", "height", 0.0);
+        dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", "width", 0.0);
+    }
+
+    if(goal.table_height == 0.05){
+        dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", "height", 0.0);
+        dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", "width", 0.0);
+    }
+
+    if(goal.table_height == 0.10){
+        dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", "height", 0.0);
+        dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", "width", 0.0);
+    }
+
+    if(goal.table_height == 0.15){
+        dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", "height", 0.0);
+        dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", "width", 0.0);
+    }
+//End of Asad changes! Jiayo!!!
+
     task_.items.clear();
     if(item_size <= tray_size) task_.items = goal.items;
     if(item_size > tray_size){
