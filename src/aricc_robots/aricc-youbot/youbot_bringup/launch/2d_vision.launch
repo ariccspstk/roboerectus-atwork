@@ -270,11 +270,11 @@
      <remap from="~input" to="/$(arg group_name)/$(arg pl_3)SmoothingImage/output" />
     <rosparam>
       h_high: 255
-      h_low: 130
-      s_high: 255
-      s_low: 100
+      h_low: 174
+      s_high: 164
+      s_low: 135
       v_high: 255
-      v_low: 90
+      v_low: 1
     </rosparam>
   </node>
 
@@ -306,7 +306,7 @@ arg nodelet_manager)">
     <rosparam>
       noise_size: 500
       min_size: 600
-      min_dist: 60
+      min_dist: 190
       epsilon: 3
       close: false
       debug: true
@@ -323,7 +323,7 @@ arg nodelet_manager)">
       debug: true
       detect_color: true
       detect_density: true
-      z: 0.41
+      z: 0.22
     </rosparam>
   </node>
   
@@ -336,11 +336,11 @@ arg nodelet_manager)">
     <rosparam>
       approximate_sync: true
       width_tolerance: 1.0
-      height_tolerance: 0.05
+      height_tolerance: 0.10
       color_h_tol: 60
       color_s_tol: 60
       color_v_tol: 60
-      density_tolerance: 100
+      density_tolerance: 175
       list_title: red_container
       debug: true
     </rosparam>
@@ -377,9 +377,9 @@ arg nodelet_manager)">
      <remap from="~input" to="/$(arg group_name)/$(arg pl_4)SmoothingImage/output" />
     <rosparam>
       h_high: 150
-      h_low: 50
-      s_high: 255
-      s_low: 100
+      h_low: 180
+      s_high: 130
+      s_low: 89
       v_high: 255
       v_low: 0
     </rosparam>
@@ -430,7 +430,7 @@ arg nodelet_manager)">
       debug: true
       detect_color: true
       detect_density: true
-      z: 0.41
+      z: 0.22
     </rosparam>
   </node>
   
@@ -443,11 +443,11 @@ arg nodelet_manager)">
     <rosparam>
       approximate_sync: true
       width_tolerance: 1.0
-      height_tolerance: 0.05
-      color_h_tol: 60
+      height_tolerance: 0.40
+      color_h_tol: 110
       color_s_tol: 60
       color_v_tol: 60
-      density_tolerance: 100
+      density_tolerance: 138
       list_title: blue_container
       debug: true
     </rosparam>

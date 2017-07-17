@@ -7,7 +7,7 @@
     <param name="item_1" type="string" value="R20"/>
     <param name="item_2" type="string" value="Axis"/>
     <param name="item_3" type="string" value="Motor"/>
-    <param name="table_height" type="double" value="0.0"/>
+    <param name="table_height" type="double" value="0.05"/>
   </node>
 
   <node pkg="rqt_gui" type="rqt_gui" name="rqt_gui" />

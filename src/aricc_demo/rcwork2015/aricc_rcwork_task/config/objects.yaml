@@ -95,7 +95,7 @@ objects:
       color_h: '49', 
       color_s: '14', 
       color_v: '103', 
-      density: '80'}
+      density: '84'}
 
 #real Bearing
   - { name: 'Bearing', 
@@ -169,8 +169,8 @@ holes:
       density: '220'}
 
   - { name: 'S40_40',   
-      width: '0.059', 
-      height: '0.104', 
+      width: '0.061', 
+      height: '0.107', 
       color_h: '160',
       color_s: '160',
       color_v: '160',
