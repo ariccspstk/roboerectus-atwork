@@ -3,6 +3,8 @@
 
 namespace aricc_2d_vision{
 
+  double table_height = 0.0;//ASAD
+  
   void RectBasedObjectDetection::onInit(){
     ConnectionBasedNodelet::onInit();
     pnh_->param("width_tolerance",  width_tolerance_, 0.001);
@@ -14,8 +16,15 @@ namespace aricc_2d_vision{
     pnh_->param("density_tolerance", density_tolerance_, 20.0);
     pnh_->param("debug", debug_, false);
     pnh_->param("print_info", print_info_, false);
-    pnh_->param<std::string>("list_title", list_title_, "objects");
+    pnh_->param<std::string>("list_title", list_title_, "objects0");
 
+    //pnh_->getParam("/youbot_2d_vision/object_detect_RotatedRectFinder/z", table_height);
+    //if (table_height == 0.245){
+        //pnh_->param<std::string>("list_title", list_title_, "objects15");
+        //pnh_->setParam("/youbot_2d_vision/object_detect_ObjectDetection/list_title", "objects15");
+        //list_title_ = "objects15";
+    //}
+    //ROS_INFO("============&&&&&&&&&&&&*****************");
     srv_ = boost::make_shared <dynamic_reconfigure::Server<Config> > (*pnh_);
     dynamic_reconfigure::Server<Config>::CallbackType f =
       boost::bind (&RectBasedObjectDetection::configCallback, this, _1, _2);
@@ -64,13 +73,102 @@ namespace aricc_2d_vision{
   void RectBasedObjectDetection::loadObjects(){
     object_list_.clear();
     //Loading tasks from config files
-    NODELET_INFO("----------");
-    NODELET_INFO("Loading %s ...", list_title_.c_str());
+    // Asad & Wen Jing changes :-))
+    bool change = true;
+    if (list_title_ == "holes" || list_title_ == "red_container" || list_title_ == "blue_container" || list_title_ == "empty_table"){
+        change = false;
+    }
+    pnh_->getParam("/youbot_2d_vision/object_detect_RotatedRectFinder/z", table_height);
+    //ROS_INFO("Table height value is %.3lf", table_height);
+    //For 0cm Table
+    if (table_height == 0.427 && change){
+        //ROS_INFO("FOUND!!!!!!!!!!!!!!!!!!!!!!");
+        //pnh_->param<std::string>("list_title", list_title_, "objects0");
+        pnh_->setParam("/youbot_2d_vision/object_detect_ObjectDetection/list_title", "objects0");
+        list_title_ = "objects0";
+    }
+    //For 5cm Table
+    else if (table_height == 0.373 && change){
+        //pnh_->param<std::string>("list_title", list_title_, "objects5");
+        pnh_->setParam("/youbot_2d_vision/object_detect_ObjectDetection/list_title", "objects5");
+        list_title_ = "objects5";
+    }
+    //For 10am Table
+    else if (table_height == 0.22 && change){
+        //pnh_->param<std::string>("list_title", list_title_, "objects10");
+        pnh_->setParam("/youbot_2d_vision/object_detect_ObjectDetection/list_title", "objects10");
+        list_title_ = "objects10";
+    }
+    //For 15cm Table
+    else if (table_height == 0.245 && change){
+        //pnh_->param<std::string>("list_title", list_title_, "objects15");
+        pnh_->setParam("/youbot_2d_vision/object_detect_ObjectDetection/list_title", "objects15");
+        list_title_ = "objects15";
+    }
+    //else{
+        //pnh_->param<std::string>("list_title", list_title_, "objects10");
+   // }
+    
+    //pnh_->setParam("/youbot_2d_vision/object_detect_ObjectDetection/list_title", "objects0");
+/*
+    dynamic_reconfigure::ReconfigureRequest srv_req;
+    dynamic_reconfigure::ReconfigureResponse srv_resp;
+    dynamic_reconfigure::StrParameter str_param;
+    dynamic_reconfigure::Config conf;
+
+    str_param.name = "list_title";
+    str_param.value = list_title_;
+    conf.strs.push_back(str_param);
+    srv_req.config = conf;
+
+    ros::NodeHandle target_nh = ros::NodeHandle("/youbot_2d_vision/object_detect_ObjectDetection/list_title");
+    std::string service_name = "/youbot_2d_vision/object_detect_ObjectDetection/list_title/set_parameters";
+    unsigned int cnt = 0;
+    std::string new_value = "";
+
+    while(1){
+      try {
+        ros::service::call(service_name, srv_req, srv_resp);
+        //ROS_WARN("Setting %s/%s: %s",
+          //target_nh.getNamespace().c_str(),
+          //param_name.c_str(), list_title_.c_str() );
+      }
+      catch(...) {
+        ROS_ERROR("Something went wrong in the service call to dynamic_reconfigure");
+        //return ABORTED;
+      }
+
+      //if(!target_nh.getParam( "list_title", new_value)){
+        //ROS_ERROR("The %s, does not have parameter %s",
+        //target_nh.getNamespace().c_str(),
+        //"list_title");
+        //return ABORTED;
+      //}
+      //if( new_value == list_title_.c_str()){
+        //ROS_INFO("The %s, have parameter %s, new value is %s",
+        //target_nh.getNamespace().c_str(),
+        //"list_title", new_value);
+        //break;
+      //}
+      //if(++cnt == 5) {
+        //ROS_ERROR("The %s, have parameter %s, current value is %s, is not %s",
+        //target_nh.getNamespace().c_str(), "list_title",
+        //new_value, list_title_.c_str());
+        //return ABORTED;
+      //}
+      sleep(1);
+    }
+*/
+    //pub_ = advertise<aricc_vision_msgs::ObjectArray>(*pnh_, "output", 1);
+    //End of the heroes changes!! Jiayou!!! :|
+
+    //NODELET_INFO("----------");
+    //NODELET_INFO("Loading %s ...", list_title_.c_str());
     XmlRpc::XmlRpcValue object_list;
 
     if( pnh_->getParam( list_title_, object_list) ){
-      NODELET_INFO("Found %s list, size: %d",
-        list_title_.c_str(),object_list.size());
+      //NODELET_INFO("Found %s list, size: %d",
+      // list_title_.c_str(),object_list.size());
       ROS_ASSERT(object_list.getType() == XmlRpc::XmlRpcValue::TypeArray);
       if( object_list.getType() == XmlRpc::XmlRpcValue::TypeArray ){
         for( size_t i = 0; i < object_list.size(); ++i){
@@ -88,10 +186,10 @@ namespace aricc_2d_vision{
           std::string(object_list[i]["color_v"]);
           std::string density =
           std::string(object_list[i]["density"]);
-          NODELET_INFO("%s: %s,%s,%s,%s,%s,%s", 
-            name.c_str(), width.c_str(), height.c_str(), 
-            color_h.c_str(),color_s.c_str(), color_v.c_str(),
-            density.c_str());
+          //NODELET_INFO("%s: %s,%s,%s,%s,%s,%s", 
+            //name.c_str(), width.c_str(), height.c_str(), 
+            //color_h.c_str(),color_s.c_str(), color_v.c_str(),
+            //density.c_str());
           Object obj;
           obj.name    = name;
           obj.width   = atof(width.c_str());
@@ -102,15 +200,18 @@ namespace aricc_2d_vision{
           obj.density = atof(density.c_str());
           object_list_.push_back(obj);
         }
-        NODELET_INFO("Loaded %lu %s",object_list_.size(), list_title_.c_str());
+        //NODELET_INFO("Loaded %lu %s",object_list_.size(), list_title_.c_str());
       }
     }
     else NODELET_ERROR("Couldn`t load %s", list_title_.c_str());
-    NODELET_INFO("----------");
+    //NODELET_INFO("----------");
   }
 
   std::string RectBasedObjectDetection::detect( 
     aricc_vision_msgs::RotatedRect rect ){
+    //ROS_INFO("******DETECT******");
+    loadObjects();
+    //NODELET_INFO("Loaded %lu %s",object_list_.size(), list_title_.c_str());
     double width    = rect.width;
     double height   = rect.height;
     double color_h  = rect.color_h;
@@ -119,6 +220,7 @@ namespace aricc_2d_vision{
     double density  = rect.density;
     double angle    = aricc_utils::rad2Deg(rect.angle);
     geometry_msgs::Point center = rect.center;
+    //loadObjects();
     std::vector <Object>::iterator it = object_list_.begin();
     
     for(; it!= object_list_.end(); ++it){
@@ -157,8 +259,8 @@ namespace aricc_2d_vision{
     const aricc_vision_msgs::RotatedRectArray::ConstPtr& msg,
     const sensor_msgs::Image::ConstPtr& image_msg,
     const sensor_msgs::CameraInfo::ConstPtr& camera_info_msg){
+    //loadObjects();//ASAD 
     boost::mutex::scoped_lock lock(mutex_);
-    
     //ROS_INFO("EXECUTE_0");
     aricc_vision_msgs::RotatedRectArray rects_msg;
     rects_msg = *msg;

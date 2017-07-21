@@ -160,6 +160,8 @@ protected:
 
   std::string param_name_;
   std::string table_param_namespace_;
+  std::string object_param_name_;
+  std::string object_param_namespace_;
   std::vector<std::string> tray_state_;
   Task task_;
   std::vector<aricc_vision_msgs::Object> best_objects_;
@@ -284,6 +286,8 @@ public:
 
     pnh_.param("table_param_namespace", table_param_namespace_, std::string("/youbot_object_detection/RotatedRectFinder/"));
     pnh_.param("param_name", param_name_, std::string("z"));
+    pnh_.param("object_param_namespace", object_param_namespace_, std::string("/youbot_2d_vision/object_detect_ObjectDetection/"));
+    pnh_.param("object_param_name", object_param_name_, std::string("objects"));
 
 
     if(!loadAllArmTrajectories()) return false;
@@ -1186,231 +1190,237 @@ public:
 //Asad changes! The codes below will dynamically change the objects parameters (dimensions) based on the current table height.
     int dummy;
     XmlRpc::XmlRpcValue object_list;
-    
-    if( pnh_.getParam("objects", object_list)){
+    pnh_.getParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list);
+    //ROS_ASSERT(object_list.getType() == XmlRpc::XmlRpcValue::TypeArray);
+    //dummy = changeObjectsParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",std::string("/"), "[{name: 'M30', width: '0.038},{name: 'F20_20_G', width: '0.019'}]" );
+    //dummy = changeObjectsParam(object_param_namespace_, object_param_name_, "AAA");
+    //pnh_.setParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", {col});    
+
+    //pnh_.setParam(std::string(object_list[0]["name"]), "- {name: M30, width: 0.038}");    
+/*    if( pnh_.getParam("objects", object_list)){
         for( size_t i = 0; i < object_list.size(); ++i){
             if(goal.table_height == 0.0){
                 if(object_list[i]["name"] == "M30"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "F20_20_G"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "Motor"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "Distance Tube"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "R20"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "F20_20_B"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "S40_40_B"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "S40_40_G"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "M20_100"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "M20"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "Axis"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "Bearing"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "Bearing Box"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
             }
 
-            if(goal.table_height == 0.05){ 
+            if(goal.table_height == 0.0005){ 
                 if(object_list[i]["name"] == "M30"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "F20_20_G"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "Motor"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "Distance Tube"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "R20"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "F20_20_B"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "S40_40_B"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "S40_40_G"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "M20_100"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "M20"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "Axis"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "Bearing"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "Bearing Box"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
             }
 
             if(goal.table_height == 0.10){
                 if(object_list[i]["name"] == "M30"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "F20_20_G"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "Motor"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "Distance Tube"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "R20"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "F20_20_B"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "S40_40_B"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "S40_40_G"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "M20_100"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "M20"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "Axis"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "Bearing"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "Bearing Box"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
             }
 
             if(goal.table_height == 0.15){
                 if(object_list[i]["name"] == "M30"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "F20_20_G"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "Motor"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "Distance Tube"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "R20"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "F20_20_B"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "S40_40_B"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "S40_40_G"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "M20_100"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "M20"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "Axis"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "Bearing"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
                 else if(object_list[i]["name"] == "Bearing Box"){
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["height"], 0.0);
-                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects", object_list[i]["width"], 0.0);
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["height"], 0.0, "0.0", true );
+                    dummy = changeTableHeightParam("/youbot_2d_vision/object_detect_ObjectDetection/objects",object_list[i]["width"], 0.0, "0.0", true );
                 }
             }
         }
-    }
-//End of Asad changes! Jiayo!!!
+    }*/
+//End of Asad changes! Jiayou!!!
 
     task_.items.clear();
     if(item_size <= tray_size) task_.items = goal.items;
@@ -1434,6 +1444,7 @@ public:
     dynamic_reconfigure::ReconfigureResponse srv_resp;
     dynamic_reconfigure::DoubleParameter double_param;
     dynamic_reconfigure::Config conf;
+    
     double_param.name =  param_name;
     double_param.value = new_param;
     conf.doubles.push_back(double_param);
@@ -1478,7 +1489,55 @@ public:
     }
   }
 
+  StateEnum changeObjectsParam(std::string detect_namespace,
+    std::string param_name, std::string new_param ){
+    dynamic_reconfigure::ReconfigureRequest srv_req;
+    dynamic_reconfigure::ReconfigureResponse srv_resp;
+    dynamic_reconfigure::StrParameter str_param;
+    dynamic_reconfigure::Config conf;
+    str_param.name =  param_name;
+    str_param.value = new_param;
+    conf.strs.push_back(str_param);
+    srv_req.config = conf;
 
+    ros::NodeHandle target_nh = ros::NodeHandle(detect_namespace);
+    std::string service_name = detect_namespace + "/set_parameters";
+    unsigned int cnt = 0;
+    std::string new_value = "";
+
+    while(1){
+      try {
+        ros::service::call(service_name, srv_req, srv_resp);
+        ROS_WARN("Setting %s/%s: %s",
+          target_nh.getNamespace().c_str(),
+          param_name.c_str(), new_param.c_str() );
+      }
+      catch(...) {
+        ROS_ERROR("Something went wrong in the service call to dynamic_reconfigure");
+        return ABORTED;
+      }
+
+      if(!target_nh.getParam( param_name, new_value)){
+        ROS_ERROR("The %s, does not have parameter %s",
+        target_nh.getNamespace().c_str(),
+        param_name.c_str());
+        return ABORTED;
+      }
+      if( new_value == new_param){
+        ROS_INFO("The %s, have parameter %s, new value is %s",
+        target_nh.getNamespace().c_str(),
+        param_name.c_str(), new_value.c_str());
+        break;
+      }
+      if(++cnt == 5) {
+        ROS_ERROR("The %s, have parameter %s, current value is %s, is not %s",
+        target_nh.getNamespace().c_str(), param_name.c_str(),
+        new_value.c_str(), new_param.c_str());
+        return ABORTED;
+      }
+      sleep(1);
+    }
+  }
   void setAborted(youbot_load_object::LoadResult result, 
     std::string str = ""){
     ROS_ERROR("%s: Aborted, %s", action_name_.c_str(), str.c_str());

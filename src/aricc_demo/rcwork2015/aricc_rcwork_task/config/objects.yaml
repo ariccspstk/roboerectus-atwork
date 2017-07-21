@@ -1,4 +1,254 @@
-objects:
+objects0:
+  - { name: 'M30', 
+      width: '0.025', 
+      height: '0.027', 
+      color_h: '59', 
+      color_s: '14', 
+      color_v: '38', 
+      density: '153'}
+
+  - { name: 'F20_20_G', 
+      width: '0.013', 
+      height: '0.051', 
+      color_h: '58', 
+      color_s: '18', 
+      color_v: '101', 
+      density: '67'} 
+
+  - { name: 'Motor', 
+      width: '0.023', 
+      height: '0.043', 
+      color_h: '30', 
+      color_s: '7', 
+      color_v: '28', 
+      density: '87'}
+
+  - { name: 'Distance Tube', 
+      width: '0.016', 
+      height: '0.017', 
+      color_h: '55', 
+      color_s: '16', 
+      color_v: '108', 
+      density: '100'}
+
+  - { name: 'R20', 
+      width: '0.016', 
+      height: '0.027', 
+      color_h: '34', 
+      color_s: '9', 
+      color_v: '28', 
+      density: '124'}
+  
+  - { name: 'F20_20_B', 
+      width: '0.012', 
+      height: '0.051', 
+      color_h: '43', 
+      color_s: '11', 
+      color_v: '29', 
+      density: '137'}
+
+  - { name: 'S40_40_B', 
+      width: '0.024', 
+      height: '0.057', 
+      color_h: '35', 
+      color_s: '8', 
+      color_v: '25', 
+      density: '79'} 
+
+  - { name: 'S40_40_G', 
+      width: '0.024', 
+      height: '0.057', 
+      color_h: '58', 
+      color_s: '14', 
+      color_v: '104', 
+      density: '64'} 
+
+  - { name: 'M20_100', 
+      width: '0.018', 
+      height: '0.059', 
+      color_h: '47', 
+      color_s: '10', 
+      color_v: '40', 
+      density: '108'} 
+
+#real M20
+  - { name: 'M20', 
+      width: '0.017', 
+      height: '0.018', 
+      color_h: '58', 
+      color_s: '21', 
+      color_v: '77', 
+      density: '124'}
+
+#fake M20
+#  - { name: 'M20', 
+#      width: '1', 
+#      height: '1', 
+#      color_h: '32', 
+#      color_s: '5', 
+#      color_v: '88', 
+#      density: '160'}
+
+  - { name: 'Axis', 
+      width: '0.013', 
+      height: '0.049', 
+      color_h: '52', 
+      color_s: '11', 
+      color_v: '93', 
+      density: '98'}
+
+#real Bearing
+  - { name: 'Bearing', 
+      width: '0.016', 
+      height: '0.017', 
+      color_h: '63', 
+      color_s: '22', 
+      color_v: '56', 
+      density: '116'}
+
+#fake Bearing
+#  - { name: 'Bearing', 
+#      width: '0.033', 
+#      height: '0.036', 
+#      color_h: '32', 
+#      color_s: '5', 
+#      color_v: '88', 
+#      density: '160'}
+
+  - { name: 'Bearing Box', 
+      width: '0.027', 
+      height: '0.027', 
+      color_h: '62', 
+      color_s: '14', 
+      color_v: '97', 
+      density: '72'}
+  
+objects5:
+  - { name: 'M30', 
+      width: '0.057', 
+      height: '0.064', 
+      color_h: '57', 
+      color_s: '9', 
+      color_v: '49', 
+      density: '117'}
+
+  - { name: 'F20_20_G', 
+      width: '0.033', 
+      height: '0.0117', 
+      color_h: '49', 
+      color_s: '18', 
+      color_v: '131', 
+      density: '95'} 
+
+  - { name: 'Motor', 
+      width: '0.051', 
+      height: '0.102', 
+      color_h: '37', 
+      color_s: '10', 
+      color_v: '35', 
+      density: '83'}
+
+  - { name: 'Distance Tube', 
+      width: '0.037', 
+      height: '0.037', 
+      color_h: '47', 
+      color_s: '9', 
+      color_v: '124', 
+      density: '84'}
+
+  - { name: 'R20', 
+      width: '0.040', 
+      height: '0.064', 
+      color_h: '35', 
+      color_s: '7', 
+      color_v: '29', 
+      density: '102'}
+  
+  - { name: 'F20_20_B', 
+      width: '0.026', 
+      height: '0.115', 
+      color_h: '90', 
+      color_s: '14', 
+      color_v: '40', 
+      density: '106'}
+
+  - { name: 'S40_40_B', 
+      width: '0.055', 
+      height: '0.130', 
+      color_h: '54', 
+      color_s: '9', 
+      color_v: '35', 
+      density: '59'} 
+
+  - { name: 'S40_40_G', 
+      width: '0.055', 
+      height: '0.130', 
+      color_h: '45', 
+      color_s: '18', 
+      color_v: '138', 
+      density: '69'} 
+
+  - { name: 'M20_100', 
+      width: '0.039', 
+      height: '0.135', 
+      color_h: '42', 
+      color_s: '8', 
+      color_v: '47', 
+      density: '105'} 
+
+#real M20
+  - { name: 'M20', 
+      width: '0.037', 
+      height: '0.042', 
+      color_h: '48', 
+      color_s: '21', 
+      color_v: '103', 
+      density: '123'}
+
+#fake M20
+#  - { name: 'M20', 
+#      width: '1', 
+#      height: '1', 
+#      color_h: '32', 
+#      color_s: '5', 
+#      color_v: '88', 
+#      density: '160'}
+
+  - { name: 'Axis', 
+      width: '0.031', 
+      height: '0.114', 
+      color_h: '46', 
+      color_s: '14', 
+      color_v: '108', 
+      density: '88'}
+
+#real Bearing
+  - { name: 'Bearing', 
+      width: '0.037', 
+      height: '0.039', 
+      color_h: '48', 
+      color_s: '21', 
+      color_v: '103', 
+      density: '123'}
+
+#fake Bearing
+#  - { name: 'Bearing', 
+#      width: '0.033', 
+#      height: '0.036', 
+#      color_h: '32', 
+#      color_s: '5', 
+#      color_v: '88', 
+#      density: '160'}
+
+  - { name: 'Bearing Box', 
+      width: '0.066', 
+      height: '0.073', 
+      color_h: '53', 
+      color_s: '14', 
+      color_v: '124', 
+      density: '75'}
+  
+objects10:
   - { name: 'M30', 
       width: '0.038', 
       height: '0.041', 
@@ -123,6 +373,132 @@ objects:
       color_v: '86', 
       density: '59'}
   
+objects15:
+  - { name: 'M30', 
+      width: '0.0', 
+      height: '0.0', 
+      color_h: '0', 
+      color_s: '0', 
+      color_v: '0', 
+      density: '0'}
+
+  - { name: 'F20_20_G', 
+      width: '0.019', 
+      height: '0.077', 
+      color_h: '55', 
+      color_s: '18', 
+      color_v: '119', 
+      density: '78'} 
+
+  - { name: 'Motor', 
+      width: '0.036', 
+      height: '0.068', 
+      color_h: '25', 
+      color_s: '6', 
+      color_v: '21', 
+      density: '62'}
+
+  - { name: 'Distance Tube', 
+      width: '0.029', 
+      height: '0.032', 
+      color_h: '56', 
+      color_s: '13', 
+      color_v: '111', 
+      density: '51'}
+
+  - { name: 'R20', 
+      width: '0.026', 
+      height: '0.042', 
+      color_h: '21', 
+      color_s: '6', 
+      color_v: '28', 
+      density: '90'}
+  
+  - { name: 'F20_20_B', 
+      width: '0.019', 
+      height: '0.078', 
+      color_h: '38', 
+      color_s: '8', 
+      color_v: '29', 
+      density: '84'}
+
+  - { name: 'S40_40_B', 
+      width: '0.038', 
+      height: '0.085', 
+      color_h: '31', 
+      color_s: '6', 
+      color_v: '28', 
+      density: '51'} 
+
+  - { name: 'S40_40_G', 
+      width: '0.042', 
+      height: '0.086', 
+      color_h: '56', 
+      color_s: '14', 
+      color_v: '104', 
+      density: '58'} 
+
+  - { name: 'M20_100', 
+      width: '0.026', 
+      height: '0.088', 
+      color_h: '41', 
+      color_s: '10', 
+      color_v: '44', 
+      density: '80'} 
+
+#real M20
+  - { name: 'M20', 
+      width: '0.027', 
+      height: '0.027', 
+      color_h: '54', 
+      color_s: '21', 
+      color_v: '100', 
+      density: '106'}
+
+#fake M20
+#  - { name: 'M20', 
+#      width: '1', 
+#      height: '1', 
+#      color_h: '32', 
+#      color_s: '5', 
+#      color_v: '88', 
+#      density: '160'}
+
+  - { name: 'Axis', 
+      width: '0.021', 
+      height: '0.075', 
+      color_h: '49', 
+      color_s: '14', 
+      color_v: '103', 
+      density: '84'}
+
+#real Bearing
+  - { name: 'Bearing', 
+      width: '0.025', 
+      height: '0.025', 
+      color_h: '64', 
+      color_s: '20', 
+      color_v: '73', 
+      density: '116'}
+
+#fake Bearing
+#  - { name: 'Bearing', 
+#      width: '0.033', 
+#      height: '0.036', 
+#      color_h: '32', 
+#      color_s: '5', 
+#      color_v: '88', 
+#      density: '160'}
+
+  - { name: 'Bearing Box', 
+      width: '0.044', 
+      height: '0.052', 
+      color_h: '59', 
+      color_s: '21', 
+      color_v: '86', 
+      density: '59'}
+ 
+########################################################################### 
 red_container:
   - { name: 'Red Container', 
       width: '0.153', 

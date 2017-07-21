@@ -307,10 +307,10 @@ private:
         nav_tasks.push_back(tasks.at(i));
       }
     }
-    ROS_INFO("PICKUP Tasks");
-    printTasks(pickup_tasks);
-    printTasks(place_tasks);
-    return;
+    //ROS_INFO("PICKUP Tasks");
+    //printTasks(pickup_tasks);
+    //printTasks(place_tasks);
+    //return;
     
     //Merge tasks with same source location
     mergeTasksByLocation(pickup_tasks);

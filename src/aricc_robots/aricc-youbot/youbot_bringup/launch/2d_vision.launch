@@ -130,7 +130,7 @@
       color_s_tol: 20
       color_v_tol: 20
       density_tolerance: 10
-      list_title: objects
+      list_title: objects10
       debug: true
     </rosparam>
   </node>
@@ -461,7 +461,7 @@ arg nodelet_manager)">
       left_top_y: -0.06
       width: 0.12
       height: 0.16
-      z: 0.41
+      z: 0.22
       project: true
     </rosparam>
   </node>
@@ -551,7 +551,7 @@ arg nodelet_manager)">
       debug: true
       detect_color: true
       detect_density: true
-      z: 0.41
+      z: 0.22
     </rosparam>
   </node>
   
@@ -563,8 +563,8 @@ arg nodelet_manager)">
     <rosparam command="load" file="$(find aricc_rcwork_task)/config/objects.yaml" />
     <rosparam>
       approximate_sync: true
-      width_tolerance: 0.005
-      height_tolerance: 0.005
+      width_tolerance: 0.08
+      height_tolerance: 0.08
       color_h_tol: 255
       color_s_tol: 255
       color_v_tol: 255
