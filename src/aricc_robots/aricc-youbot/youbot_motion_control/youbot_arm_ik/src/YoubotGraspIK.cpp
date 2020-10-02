@@ -254,7 +254,7 @@ std::vector<joint_positions_solution_t> YoubotGraspIK::get_all_ik_solutions(geom
 bool YoubotGraspIK::exists_unique_pitch_solution(geometry_msgs::Point desired_position, geometry_msgs::Vector3 desired_normal) {
 
 	// r and z direction vector
-	Eigen::Vector3d z_direction(0, 0, 1);
+	Eigen::Vector3d z_direction(0, 0, 1); //z=1 given -Jayvien
 	Eigen::Vector3d r_direction(desired_position.x, desired_position.y, desired_position.z);
 	r_direction.normalize();
 
